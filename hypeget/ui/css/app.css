@@ -29,11 +29,7 @@ input[type="text"], input[type="url"], input[type="number"], input[type="time"],
   border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;
 }
-.titlebar .logo {
-  width: 22px; height: 22px; border-radius: 6px; background: var(--blue);
-  display: grid; place-items: center; color: #fff; margin-right: 11px;
-}
-.titlebar .logo svg { width: 13px; height: 13px; }
+.titlebar .logo { width: 22px; height: 22px; margin-right: 10px; flex: none; }
 .titlebar .title { font-weight: 600; font-size: 13.5px; flex: 1; }
 .win-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
 .win-controls button {
@@ -274,7 +270,7 @@ input[type="text"], input[type="url"], input[type="number"], input[type="time"],
 .grab-item .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .about { text-align: center; padding: 10px 0 4px; }
-.about .logo-lg { width: 52px; height: 52px; border-radius: 13px; background: var(--blue); color: #fff; display: inline-grid; place-items: center; margin-bottom: 10px; }
+.about .logo-lg { width: 64px; height: 64px; margin: 0 auto 10px; display: block; }
 .about p { color: var(--text-3); font-size: 12.5px; line-height: 1.55; margin: 6px 0; }
 .steps { font-size: 12.5px; line-height: 1.6; color: var(--text-2); padding-left: 18px; margin: 4px 0 10px; }
 code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; background: var(--bg-hover); padding: 1px 5px; border-radius: 4px; }

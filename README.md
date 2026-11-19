@@ -1,3 +1,5 @@
+<p align="center"><img src="brand/png/hyperget-logo.png" alt="HyperGet by dolese Tech" width="420"></p>
+
 # HyperGet Downloader
 
 A multi-connection download manager with HLS stream support, a quality picker for

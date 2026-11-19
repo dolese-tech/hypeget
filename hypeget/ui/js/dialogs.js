@@ -307,7 +307,7 @@ export function aboutDialog(version) {
   modal({
     title: "About",
     body: `<div class="about">
-      <div class="logo-lg"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></div>
+      <img class="logo-lg" src="icons/logo.svg" alt="">
       <div style="font-weight:700;font-size:15px">HyperGet Downloader</div>
       <p>Version ${esc(version || "0.1.0")}</p>
       <p>Multi-connection downloads with resume, HLS streams with quality selection,<br>scheduler, queue, link grabber and browser integration.</p></div>`,
