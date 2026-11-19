@@ -24,7 +24,19 @@ videos, and a browser extension. The UI is built to match `docs/mockup/main_wind
   optional take-over of normal browser downloads.
 - Light and dark theme.
 
-## Run it
+## Download (Windows)
+
+Every push builds Windows downloads with GitHub Actions (**Actions → Windows build → Artifacts**):
+
+- `HyperGet-Setup-<version>.exe`: installer (Start menu + desktop shortcut, uninstaller)
+- `HyperGet-portable-<version>.zip`: unzip and run `HyperGet.exe`
+
+Both include FFmpeg, yt-dlp and the `extension` folder. Push a tag such as `v0.1.0` to publish
+them on the Releases page. Windows needs the Microsoft Edge WebView2 runtime (already present
+on Windows 10/11). The build isn't code-signed yet, so SmartScreen will warn on first run:
+choose *More info → Run anyway*.
+
+## Run from source
 
 ```bash
 pip install -e .              # pywebview + cryptography

@@ -179,6 +179,14 @@ def check_supported(pl: MediaPlaylist) -> None:
 
 
 def ffmpeg_path() -> str | None:
+    """FFmpeg bundled next to HyperGet.exe (packaged build) wins over PATH."""
+    import sys
+    if getattr(sys, "frozen", False):
+        here = os.path.dirname(sys.executable)
+        for name in ("ffmpeg.exe", "ffmpeg"):
+            for p in (os.path.join(here, name), os.path.join(here, "ffmpeg", name)):
+                if os.path.isfile(p):
+                    return p
     return shutil.which("ffmpeg")
 
 
