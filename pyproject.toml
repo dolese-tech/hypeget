@@ -18,7 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 # Optional site extractor (YouTube and ~1000 other sites) with quality selection.
 sites = ["yt-dlp>=2024.1.1"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pytest-timeout>=2"]
 
 [project.scripts]
 hypeget = "hypeget.__main__:main"

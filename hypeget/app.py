@@ -158,14 +158,14 @@ def main(argv: list[str] | None = None) -> None:
     if not instance.acquire():
         # HyperGet is already running: bring it forward instead of opening a second copy.
         if args.minimized or ask_running_app("show"):
-            print("HyperGet is already running.")
+            print("HyperGet is already running.", flush=True)
         else:
-            print("HyperGet is already running (no window to show).")
+            print("HyperGet is already running (no window to show).", flush=True)
         return
 
     register_browsers()
     manager, server = start_backend(args.port)
-    print(f"HyperGet running at {server.url}")
+    print(f"HyperGet running at {server.url}", flush=True)
     tray = None
     try:
         if args.headless or args.browser:
@@ -180,7 +180,7 @@ def main(argv: list[str] | None = None) -> None:
         try:
             import webview  # pywebview
         except ImportError:
-            print("pywebview not installed; opening in your browser instead.")
+            print("pywebview not installed; opening in your browser instead.", flush=True)
             webbrowser.open(server.url)
             server.thread.join()
             return

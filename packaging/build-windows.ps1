@@ -15,10 +15,10 @@ Write-Host "== Building HyperGet $version" -ForegroundColor Cyan
 
 Write-Host "== Installing build tools"
 python -m pip install --upgrade pip
-python -m pip install . yt-dlp pyinstaller pytest
+python -m pip install . yt-dlp pyinstaller pytest pytest-timeout
 
 Write-Host "== Running tests"
-python -m pytest -q
+python -m pytest -v --timeout=120
 if ($LASTEXITCODE -ne 0) { throw "Tests failed" }
 
 Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
