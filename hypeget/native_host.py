@@ -79,7 +79,8 @@ def app_port() -> int | None:
 def app_command() -> list[str]:
     """How to start HyperGet from here. HYPEGET_APP_ARGS adds arguments
     (tests use "--headless" because there is no screen)."""
-    extra = os.environ.get("HYPEGET_APP_ARGS", "").split()
+    # Started for the browser: go straight to the tray, like IDM.
+    extra = ["--minimized", *os.environ.get("HYPEGET_APP_ARGS", "").split()]
     if getattr(sys, "frozen", False):
         here = os.path.dirname(sys.executable)
         for name in ("HyperGet.exe", "HyperGet"):

@@ -58,7 +58,7 @@ jobs:
           --icon packaging/hypeget.ico
           --add-data "hypeget/ui;hypeget/ui"
           --add-data "hypeget/store_ids.json;hypeget"
-          --collect-submodules yt_dlp
+          --collect-submodules yt_dlp --collect-submodules pystray
           --collect-all webview
           packaging/launcher.py
 

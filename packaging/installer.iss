@@ -25,7 +25,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
-Name: "startup"; Description: "Start HyperGet when I sign in (needed for the browser extension)"; GroupDescription: "Options:"; Flags: unchecked
+Name: "startup"; Description: "Start HyperGet in the notification area when I sign in"; GroupDescription: "Options:"; Flags: unchecked
 
 [Files]
 Source: "..\dist\HyperGet\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
@@ -35,7 +35,7 @@ Name: "{group}\HyperGet Downloader"; Filename: "{app}\HyperGet.exe"
 Name: "{group}\Browser extension folder"; Filename: "{app}\extension"
 Name: "{group}\Uninstall HyperGet"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\HyperGet Downloader"; Filename: "{app}\HyperGet.exe"; Tasks: desktopicon
-Name: "{userstartup}\HyperGet Downloader"; Filename: "{app}\HyperGet.exe"; Tasks: startup
+Name: "{userstartup}\HyperGet Downloader"; Filename: "{app}\HyperGet.exe"; Parameters: "--minimized"; Tasks: startup
 
 ;---------------------------------------------------------------------------
 ; Browser extension, the IDM way: tell Chrome and Edge where to get the store

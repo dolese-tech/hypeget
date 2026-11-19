@@ -30,7 +30,7 @@ if (-not (Test-Path hypeget\store_ids.json)) {
 Write-Host "== HyperGet.exe"
 pyinstaller --noconfirm --clean --windowed --name HyperGet --icon packaging/hypeget.ico `
   --add-data "hypeget/ui;hypeget/ui" --add-data "hypeget/store_ids.json;hypeget" `
-  --collect-submodules yt_dlp --collect-all webview packaging/launcher.py
+  --collect-submodules yt_dlp --collect-submodules pystray --collect-all webview packaging/launcher.py
 
 Write-Host "== HyperGet-NativeHost.exe (browser helper)"
 pyinstaller --noconfirm --onefile --console --name HyperGet-NativeHost --icon packaging/hypeget.ico `

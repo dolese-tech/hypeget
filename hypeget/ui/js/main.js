@@ -134,7 +134,7 @@ const commands = {
   extension: () => D.extensionDialog(),
   about: () => api.state().then(() => D.aboutDialog("0.1.0")),
   sites: () => D.sitesDialog(!!ui.state?.features.sites),
-  exit: () => window.pywebview?.api ? window.pywebview.api.close() : window.close(),
+  exit: () => window.pywebview?.api?.quit ? window.pywebview.api.quit() : window.close(),
 };
 
 function afterAdd() {
@@ -331,6 +331,9 @@ if (!window.pywebview && !navigator.userAgent.includes("pywebview")) {
   window.addEventListener("pywebviewready", () => document.querySelector(".win-controls").style.display = "");
   document.querySelector(".win-controls").style.display = "none";
 }
+
+// The app (tray menu, a second HyperGet start) can run commands here, e.g. "add".
+window.hgCommand = (cmd) => { if (commands[cmd]) run(cmd); };
 
 // ------------------------------------------------------------------ go
 refresh();

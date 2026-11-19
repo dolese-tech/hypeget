@@ -24,6 +24,11 @@ videos, and a browser extension. The UI is built to match `docs/mockup/main_wind
 - **Browser extension** (Chrome / Edge): a *Download this video* button over players with a
   quality menu, a list of media detected on the tab, right-click *Download with HyperGet*, and
   optional take-over of normal browser downloads.
+- **Runs in the notification area** like IDM: closing the window keeps HyperGet running
+  (tray menu: Open, Add URL, Start queue, Stop all, Speed limit, Exit), the tooltip shows
+  live speed, and a pop-up says when a download finishes or fails. Both can be switched
+  off in Options.
+- **One copy at a time**: starting HyperGet again brings the running window to the front.
 - Light and dark theme.
 
 ## Download (Windows)
@@ -54,6 +59,7 @@ pip install yt-dlp            # optional: YouTube & other video sites
 
 python -m hypeget             # native window
 python -m hypeget --browser   # or open the UI in your web browser
+python -m hypeget --minimized # start in the notification area
 ```
 
 Settings and the download list live in `~/.hypeget` (override with `HYPEGET_HOME`).

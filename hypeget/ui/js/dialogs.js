@@ -245,6 +245,8 @@ export function optionsDialog(state) {
       <div class="row2">
         <div class="field"><label>Speed limit (KB/s, 0 = unlimited)</label><input type="number" id="o-speed" min="0" value="${Math.round(s.speed_limit / 1024)}"></div>
       </div>
+      <label class="check"><input type="checkbox" id="o-tray" ${s.close_to_tray ? "checked" : ""}> Keep running in the notification area when the window is closed</label>
+      <label class="check"><input type="checkbox" id="o-notify" ${s.notify_complete ? "checked" : ""}> Show a notification when a download finishes or fails</label>
       <div class="msg info">
         Video sites (YouTube etc.): <b>${f.sites ? "enabled" : "not installed"}</b>${f.sites ? "" : " — run <code>pip install yt-dlp</code>"}<br>
         FFmpeg (merging HLS audio/video into MP4): <b>${f.ffmpeg ? "found" : "not found"}</b>
@@ -256,6 +258,8 @@ export function optionsDialog(state) {
         connections: +ov.querySelector("#o-conn").value,
         max_active: +ov.querySelector("#o-max").value,
         speed_limit: Math.max(0, +ov.querySelector("#o-speed").value) * 1024,
+        close_to_tray: ov.querySelector("#o-tray").checked,
+        notify_complete: ov.querySelector("#o-notify").checked,
       });
       toast("Options saved");
     } }],

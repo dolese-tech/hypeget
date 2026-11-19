@@ -123,6 +123,14 @@ class Handler(BaseHTTPRequestHandler):
             if method == "POST" and parts == ["inspect"]:
                 b = self._body()
                 return self._json(200, media.inspect(b["url"], b.get("headers")))
+            if method == "POST" and parts == ["app", "show"]:
+                # Another HyperGet start (single instance) or the tray asks us to come forward.
+                cmd = str(self._body().get("command") or "show")
+                hook = getattr(m, "ui_show", None)
+                if hook is None:
+                    return self._json(409, {"error": "no window"})
+                hook(cmd)
+                return self._json(200, {"ok": True})
             if method == "POST" and parts == ["grab"]:
                 b = self._body()
                 links = grabber.grab(b["url"], b.get("headers"))

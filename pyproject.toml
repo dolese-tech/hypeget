@@ -11,6 +11,8 @@ requires-python = ">=3.10"
 dependencies = [
   "pywebview>=5.0",      # native window for the UI
   "cryptography>=41",    # AES-128 decryption for encrypted (non-DRM) HLS streams
+  "pystray>=0.19",       # notification-area (tray) icon
+  "Pillow>=10",          # tray icon image
 ]
 
 [project.optional-dependencies]

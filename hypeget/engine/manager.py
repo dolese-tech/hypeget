@@ -43,6 +43,7 @@ class Manager:
         self._running = True
         self.queue_running = True
         self.grabber_projects = 0
+        self.ui_show = None          # set by the app window: ui_show(command) brings it forward
         for d in self.store.load():
             self.downloads[d.id] = d
         self._ticker = threading.Thread(target=self._tick_loop, daemon=True)

@@ -25,8 +25,10 @@ class Settings:
     scheduler_enabled: bool = False
     scheduler_start: str = "02:00"
     scheduler_stop: str = "07:00"
-    api_port: int = 52817                # local API used by the browser extension
+    api_port: int = 52817                # preferred local API port (the browser helper finds it either way)
     theme: str = "light"
+    close_to_tray: bool = True           # closing the window keeps HyperGet in the notification area
+    notify_complete: bool = True         # pop-up when a download finishes or fails
 
 
 class Config:
