@@ -2,10 +2,19 @@ name: Windows build
 
 # Builds HyperGet.exe (PyInstaller), a portable zip and an installer (Inno Setup).
 # Push a tag like v0.1.0 to also publish them as a GitHub Release.
+# Runs only when it matters: a version tag (publishes a release), app code
+# changing on main, or by hand (Actions > Windows build > Run workflow).
 on:
   push:
-    branches: ["**"]
     tags: ["v*"]
+    branches: [main]
+    paths:
+      - "hypeget/**"
+      - "extension/**"
+      - "packaging/**"
+      - "tools/**"
+      - "pyproject.toml"
+      - ".github/workflows/windows-build.yml"
   workflow_dispatch:
 
 permissions:
