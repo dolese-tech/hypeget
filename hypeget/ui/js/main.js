@@ -1,8 +1,9 @@
 import { api } from "./api.js";
 import { renderDetails } from "./details.js";
 import * as D from "./dialogs.js";
-import { bytes, isUrl, speed } from "./format.js";
-import { filterRows, renderTable, sortRows } from "./table.js";
+import { bytes, esc, isUrl, speed } from "./format.js";
+import { loadStats } from "./stats.js";
+import { filterRows, groupRows, renderTable, sortRows } from "./table.js";
 
 const $ = (s) => document.querySelector(s);
 const ui = {
@@ -14,6 +15,11 @@ const ui = {
   anchor: null,
   visible: [],
   showDetails: true,
+  collapsed: new Set(),
+  speeds: [],
+  groupsKey: "",
+  statsAt: 0,
+  capSeen: false,
 };
 
 try {
@@ -53,15 +59,23 @@ function render() {
 
   // sidebar counts
   const c = s.counts;
-  const counts = { all: c.all, unfinished: c.unfinished, finished: c.finished, queues: c.queues, grabber: c.grabber, ...c.categories };
+  const inQueue = s.downloads.filter((d) => d.status === "queued" || (d.in_queue && d.status !== "complete")).length;
+  const counts = { all: c.all, unfinished: c.unfinished, finished: c.finished, queues: inQueue, grabber: c.grabber, ...c.categories };
   document.querySelectorAll("[data-count]").forEach((el) => { el.textContent = counts[el.dataset.count] ?? 0; });
+  renderGroupNav(s.downloads);
+  renderToday(s);
 
-  // table
+  // table (or statistics)
+  const statsMode = ui.filter === "stats";
+  $(".main").classList.toggle("stats-mode", statsMode);
+  if (statsMode && Date.now() - ui.statsAt > 10000) { ui.statsAt = Date.now(); loadStats($("#stats")); }
   ui.visible = sortRows(filterRows(s.downloads, ui.filter, ui.query), ui.sort);
+  const items = groupRows(ui.visible, ui.collapsed, !ui.filter.startsWith("group:") && !ui.query.trim());
+  ui.visible = items.filter((it) => it.type === "dl").map((it) => it.d);
   const empty = s.downloads.length
     ? "<b>Nothing here</b>No downloads match this view."
     : "<b>No downloads yet</b>Click Add URL or paste a link (Ctrl+V) to start.";
-  renderTable($("#tbody"), ui.visible, ui.selected, empty);
+  renderTable($("#tbody"), items, ui.selected, empty);
 
   // details
   const det = $("#details");
@@ -75,10 +89,23 @@ function render() {
   $("#sbQueue").textContent = s.waiting;
   $("#sbScheduler").textContent = s.scheduler;
 
-  // speed rule + 'when all downloads finish'
+  // speed rule, 'when all downloads finish', data cap
   const rule = $("#sbRule");
   rule.classList.toggle("hidden", !s.speed_rule_active);
-  if (s.speed_rule_active) rule.textContent = `Working-hours limit ${bytes(s.effective_speed_limit, 1)}/s`;
+  if (s.speed_rule_active) rule.textContent = `${s.speed_rule || "Speed rule"} · ${s.effective_speed_limit ? bytes(s.effective_speed_limit, 1) + "/s" : "unlimited"}`;
+  const doneChip = $("#sbDone");
+  doneChip.classList.toggle("hidden", s.when_done === "nothing");
+  doneChip.textContent = `When done: ${{ sleep: "Sleep", shutdown: "Shut down", exit: "Exit" }[s.when_done] || ""}`;
+  const capChip = $("#sbCap");
+  capChip.classList.toggle("hidden", !s.data_cap);
+  if (s.data_cap) {
+    capChip.textContent = `Data ${bytes(s.data_cap.used, 1)} of ${bytes(s.data_cap.limit, 0)}`;
+    capChip.classList.toggle("b", !s.data_cap.hit);
+  }
+  if (s.cap_reached && !ui.capSeen) {
+    D.toast(s.data_cap?.action === "pause" ? "Monthly data cap reached: downloads paused. Resume them if you want to carry on." : "Monthly data cap reached.", 6000);
+  }
+  ui.capSeen = !!s.cap_reached;
   document.querySelectorAll("[data-done]").forEach((k) => { k.textContent = k.dataset.done === s.when_done ? "✓" : ""; });
   const pend = s.pending_action, banner = $("#doneBanner");
   banner.classList.toggle("hidden", !pend);
@@ -101,6 +128,38 @@ function render() {
   $("#themeCheck").textContent = document.documentElement.dataset.theme === "dark" ? "✓" : "";
 }
 
+function renderGroupNav(downloads) {
+  const groups = new Map();
+  for (const d of downloads) {
+    if (!d.group) continue;
+    const g = groups.get(d.group) || { n: 0, done: 0 };
+    g.n++;
+    if (d.status === "complete") g.done++;
+    groups.set(d.group, g);
+  }
+  const key = JSON.stringify([...groups].sort()) + ui.filter;
+  if (key === ui.groupsKey) return;
+  ui.groupsKey = key;
+  $("#groupNav").innerHTML = [...groups].map(([name, g]) => `
+    <button class="nav-item${ui.filter === "group:" + name ? " sel" : ""}" data-filter="group:${esc(name)}" title="${esc(name)}">
+      <span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>${esc(name)}</span>
+      <span class="count">${g.done}/${g.n}</span></button>`).join("");
+}
+
+function renderToday(s) {
+  ui.speeds.push(s.total_speed || 0);
+  if (ui.speeds.length > 60) ui.speeds.shift();
+  const t = s.today || { bytes: 0, files: 0, avg_speed: 0 };
+  $("#todayBytes").textContent = bytes(t.bytes, 1);
+  $("#todayNote").textContent = t.bytes ? `${t.files} file${t.files === 1 ? "" : "s"} · avg ${speed(t.avg_speed)}` : "Nothing downloaded yet";
+  const v = ui.speeds, max = Math.max(1024 * 1024, ...v) * 1.25, w = 180, h = 34;
+  const pts = v.map((x, i) => `${(i * w / 59 + (60 - v.length) * w / 59).toFixed(1)},${(h - 2 - x / max * (h - 6)).toFixed(1)}`).join(" ");
+  const first = (60 - v.length) * w / 59;
+  $("#todaySpark").innerHTML = v.length > 1
+    ? `<polygon points="${first.toFixed(1)},${h} ${pts} ${w},${h}" fill="var(--blue)" opacity=".13"/><polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`
+    : "";
+}
+
 function setEnabled(act, on) {
   const b = document.querySelector(`.tool[data-act="${act}"]`);
   if (b) b.disabled = !on;
@@ -114,7 +173,7 @@ async function forSelected(action, filter) {
 }
 
 const commands = {
-  add: () => D.addUrlDialog(isUrl(ui.query) ? ui.query.trim() : "", afterAdd),
+  add: () => D.addUrlDialog(isUrl(ui.query) ? ui.query.trim() : "", afterAdd, ui.state?.settings),
   batch: () => D.batchDialog(refresh),
   resume: () => forSelected("resume", (d) => ["paused", "error", "queued"].includes(d.status)),
   pause: () => forSelected("pause"),
@@ -125,7 +184,10 @@ const commands = {
   scheduler: () => ui.state && D.schedulerDialog(ui.state.settings),
   queue: () => ui.state && D.queueDialog(ui.state),
   grabber: () => D.grabberDialog(refresh),
-  options: () => ui.state && D.optionsDialog(ui.state),
+  options: () => ui.state && D.settingsDialog(ui.state),
+  rules: () => ui.state && D.settingsDialog(ui.state, "rules"),
+  plans: () => D.plansDialog(),
+  stats: () => selectNav("stats"),
   open: () => { const d = selectedItems().find((x) => x.status === "complete"); if (d) api.action(d.id, "open").catch((e) => D.toast(e.message)); },
   folder: () => { const d = selectedItems()[0]; if (d) api.action(d.id, "folder").catch((e) => D.toast(e.message)); },
   copy: async () => {
@@ -166,7 +228,7 @@ function run(cmd, arg) {
     }).catch((e) => D.toast(e.message));
     return;
   }
-  const f = arg !== undefined && cmd === "add" ? () => D.addUrlDialog(arg, afterAdd) : commands[cmd];
+  const f = arg !== undefined && cmd === "add" ? () => D.addUrlDialog(arg, afterAdd, ui.state?.settings) : commands[cmd];
   if (f) Promise.resolve(f()).catch((e) => D.toast(e.message));
 }
 
@@ -235,13 +297,18 @@ document.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click
   run(b.dataset.act === "stop" ? "stop" : b.dataset.act);
 }));
 
+function selectNav(filter) {
+  ui.filter = filter;
+  ui.statsAt = 0;
+  document.querySelectorAll("#sidebar .nav-item").forEach((n) => n.classList.toggle("sel", n.dataset.filter === filter));
+  render();
+}
+
 $("#sidebar").addEventListener("click", (e) => {
   const item = e.target.closest(".nav-item");
   if (!item) return;
-  document.querySelectorAll(".nav-item").forEach((n) => n.classList.toggle("sel", n === item));
-  ui.filter = item.dataset.filter;
-  if (ui.filter === "grabber") run("grabber");
-  render();
+  if (item.dataset.filter === "grabber") { run("grabber"); return; }
+  selectNav(item.dataset.filter);
 });
 
 // sorting
@@ -262,6 +329,13 @@ tbody.addEventListener("mousedown", (e) => {
   const row = e.target.closest(".row");
   if (!row) { if (e.button === 0) { ui.selected.clear(); render(); } return; }
   const id = row.dataset.id;
+  if (id.startsWith("g:")) {                      // playlist row: open / close it
+    if (e.button !== 0) return;
+    const name = id.slice(2);
+    ui.collapsed.has(name) ? ui.collapsed.delete(name) : ui.collapsed.add(name);
+    render();
+    return;
+  }
   if (e.button === 2 && ui.selected.has(id)) return;
   if (e.shiftKey && ui.anchor) {
     const ids = ui.visible.map((d) => d.id);
@@ -278,7 +352,7 @@ tbody.addEventListener("mousedown", (e) => {
 });
 tbody.addEventListener("dblclick", (e) => {
   const row = e.target.closest(".row");
-  if (!row) return;
+  if (!row || row.dataset.id.startsWith("g:")) return;
   const d = ui.state.downloads.find((x) => x.id === row.dataset.id);
   if (!d) return;
   if (d.status === "complete") run("open");
@@ -286,7 +360,7 @@ tbody.addEventListener("dblclick", (e) => {
 });
 tbody.addEventListener("contextmenu", (e) => {
   const row = e.target.closest(".row");
-  if (!row) return;
+  if (!row || row.dataset.id.startsWith("g:")) return;
   e.preventDefault();
   closeMenus();
   const sel = selectedItems();

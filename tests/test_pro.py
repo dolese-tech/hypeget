@@ -102,17 +102,54 @@ def test_time_windows():
     assert not in_window("08:00", "08:00", at("08:00"))
 
 
+WEEKDAYS = [0, 1, 2, 3, 4]
+
+
+def rule(name, start, end, limit, days=WEEKDAYS, enabled=True):
+    return {"name": name, "enabled": enabled, "days": days, "start": start, "end": end, "limit": limit}
+
+
 def test_speed_rule_switches_the_limit(manager):
-    manager.update_settings(speed_limit=0, speed_rule_enabled=True, speed_rule_start="08:00",
-                            speed_rule_end="17:00", speed_rule_limit=512 * 1024)
+    # 2026-11-19 is a Thursday
+    manager.update_settings(speed_limit=0, speed_rules=[rule("Work", "08:00", "17:00", 512 * 1024)])
     assert manager.effective_speed_limit(at("09:00")) == (512 * 1024, True)
     assert manager.effective_speed_limit(at("18:00")) == (0, False)
     manager._apply_speed(now=at("09:00"))
     assert manager.throttle.limit == 512 * 1024
     manager._apply_speed(now=at("18:00"))
     assert manager.throttle.limit == 0
-    manager.update_settings(speed_rule_enabled=False)
+    manager.update_settings(speed_rules=[rule("Work", "08:00", "17:00", 512 * 1024, enabled=False)])
     assert manager.effective_speed_limit(at("09:00")) == (0, False)
+
+
+def test_rules_follow_days_and_order(manager):
+    manager.update_settings(speed_limit=0, speed_rules=[
+        rule("Work", "08:00", "17:00", 1000), rule("Evening", "16:00", "22:00", 3000, days=list(range(7))),
+        rule("Night", "23:00", "02:00", 5000, days=[3])])
+    assert manager.effective_speed_limit(at("16:30"))[0] == 1000            # first match wins
+    assert manager.effective_speed_limit(at("19:00"))[0] == 3000
+    sat = dt.datetime(2026, 11, 21, 9, 0)
+    assert manager.effective_speed_limit(sat) == (0, False)                   # weekday rule, Saturday
+    assert manager.effective_speed_limit(at("23:30"))[0] == 5000              # Thursday night
+    assert manager.effective_speed_limit(dt.datetime(2026, 11, 20, 1, 0))[0] == 5000   # ...after midnight
+    assert manager.effective_speed_limit(dt.datetime(2026, 11, 21, 1, 0)) == (0, False)  # Friday night: no
+
+
+def test_bad_rules_are_dropped(manager):
+    manager.update_settings(speed_rules=[rule("ok", "08:00", "09:00", 1), {"start": "25:00", "end": "x"}, "junk"])
+    assert [r["name"] for r in manager.config.settings.speed_rules] == ["ok"]
+    manager.update_settings(speed_rules="not a list")
+    assert len(manager.config.settings.speed_rules) == 1
+
+
+def test_old_single_rule_settings_are_migrated(tmp_path):
+    import json
+    from hypeget.config import Config
+    (tmp_path / "settings.json").write_text(json.dumps({
+        "speed_rule_enabled": True, "speed_rule_start": "07:30", "speed_rule_end": "18:00", "speed_rule_limit": 2048}))
+    rules = Config(str(tmp_path)).settings.speed_rules
+    assert rules == [{"name": "Working hours", "enabled": True, "days": [0, 1, 2, 3, 4, 5, 6],
+                      "start": "07:30", "end": "18:00", "limit": 2048}]
 
 
 # ---------------------------------------------------------------- when all downloads finish

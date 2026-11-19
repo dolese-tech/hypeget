@@ -116,6 +116,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"app": "hyperget", "version": __version__})
             if method == "GET" and parts == ["state"]:
                 return self._json(200, m.snapshot())
+            if method == "GET" and parts == ["stats"]:
+                period = query.get("period", "week")
+                return self._json(200, m.stats.summary(period if period in ("week", "month", "year") else "week"))
             if parts == ["settings"]:
                 if method == "POST":
                     return self._json(200, m.update_settings(**self._body()))
@@ -144,9 +147,10 @@ class Handler(BaseHTTPRequestHandler):
                     dl = m.add(it["url"], kind=it.get("kind") or None, filename=it.get("filename") or None,
                                save_dir=it.get("save_dir") or None, quality=it.get("quality") or "",
                                options={k: v for k, v in (it.get("options") or {}).items()
-                                        if k in ("variant_url", "audio_url", "format", "container", "subtitles")},
+                                        if k in ("variant_url", "audio_url", "format", "container", "subtitles", "embed_subs")},
                                headers=it.get("headers"), title=it.get("title") or "",
-                               page_url=it.get("page_url") or "", start=it.get("start", True))
+                               page_url=it.get("page_url") or "", start=it.get("start", True),
+                               group=it.get("group") or "", thumbnail=it.get("thumbnail") or "")
                     created.append(dl.to_view())
                 return self._json(201, {"downloads": created})
             if len(parts) == 3 and parts[0] == "downloads" and method == "POST":

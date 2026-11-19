@@ -278,7 +278,9 @@ def inspect(url: str, headers: dict | None = None) -> dict:
                 "options": playlist_options(can_merge), "subtitles": []}
     options = build_options(info, can_merge)
     out = {"kind": "site", "title": info.get("title") or "video", "duration": info.get("duration") or 0,
-           "thumbnail": info.get("thumbnail"), "options": options, "subtitles": subtitle_choices(info)}
+           "thumbnail": info.get("thumbnail"), "options": options, "subtitles": subtitle_choices(info),
+           "uploader": info.get("uploader") or info.get("channel") or "", "views": info.get("view_count") or 0,
+           "site": info.get("extractor_key") or ""}
     if "youtube" in (info.get("extractor_key") or "").lower() and not youtube_hd_ready():
         out["note"] = "HD and 4K need HyperGet's YouTube components; reinstall HyperGet to get them."
     return out
@@ -353,6 +355,8 @@ def run_site(dl: Download, ctx: RunContext) -> None:
         opts["subtitlesformat"] = "srt/vtt/best"
         if ffmpeg_path():
             post.append({"key": "FFmpegSubtitlesConvertor", "format": "srt"})
+            if dl.options.get("embed_subs") and container in ("mp4", "mkv", "webm"):
+                post.append({"key": "FFmpegEmbedSubtitle", "already_have_subtitle": True})
     if post:
         opts["postprocessors"] = post
     try:

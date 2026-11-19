@@ -24,5 +24,6 @@ export const api = {
   settings: (changes) => call("POST", "/api/settings", changes),
   whenDone: (action) => call("POST", "/api/actions/when_done", { action }),
   cancelWhenDone: () => call("POST", "/api/actions/cancel_when_done"),
+  stats: (period) => call("GET", `/api/stats?period=${encodeURIComponent(period)}`),
   grab: (url) => call("POST", "/api/grab", { url }),
 };

@@ -51,6 +51,9 @@ class Download:
     filename_locked: bool = False      # user picked the name; don't replace from server
     retries: int = 0                   # automatic retries used so far
     retry_at: float | None = None      # wall-clock time of the next automatic retry
+    group: str = ""                    # playlist the video came from
+    thumbnail: str = ""                # video picture (site downloads)
+    active_seconds: float = 0.0        # time spent downloading
 
     # Runtime-only (not persisted)
     speed: float = field(default=0.0, compare=False)
@@ -62,6 +65,7 @@ class Download:
     def __post_init__(self):
         self._lock = threading.RLock()
         self._samples: collections.deque = collections.deque(maxlen=40)
+        self.history: collections.deque = collections.deque(maxlen=60)   # speed once a second, last 60 s
 
     # ---- derived ---------------------------------------------------------
     @property
@@ -102,6 +106,41 @@ class Download:
             self.eta = max(0.0, (total - self.downloaded) / self.speed)
         else:
             self.eta = None
+
+    def file_map(self, cells: int = 96) -> list[int] | None:
+        """Which parts of the file are done (2), being downloaded now (1) or waiting (0)."""
+        if self.status == COMPLETE:
+            return [2] * cells
+        if self.kind == "hls" and self.parts_total:
+            done = int(cells * self.parts_done / self.parts_total)
+            return ([2] * done + ([1] if done < cells and self.status in ACTIVE else []) + [0] * cells)[:cells]
+        if not self.size or not self.segments:
+            return None
+        size, cell = self.size, self.size / cells
+        covered = [0.0] * cells
+        live = set()
+        for seg in self.segments:
+            try:
+                start, end, pos = int(seg[0]), int(seg[1]), int(seg[2])
+            except (TypeError, ValueError, IndexError):
+                continue
+            a, b = start, min(pos, end + 1)             # done part of this segment: [start, pos)
+            i = int(a // cell)
+            while a < b and i < cells:
+                top = min(b, (i + 1) * cell)
+                covered[i] += top - a
+                a, i = top, i + 1
+            if self.status in ACTIVE and pos <= end:
+                live.add(min(cells - 1, int(pos // cell)))
+        out = []
+        for i in range(cells):
+            if covered[i] >= cell - 1:
+                out.append(2)
+            elif i in live:
+                out.append(1)
+            else:
+                out.append(0)
+        return out
 
     def reset_speed(self) -> None:
         self._samples.clear()
@@ -162,6 +201,11 @@ class Download:
             "finished_at": self.finished_at,
             "in_queue": self.in_queue,
             "retries": self.retries,
+            "group": self.group,
+            "thumbnail": self.thumbnail,
+            "subtitles": str(self.options.get("subtitles") or ""),
+            "history": [round(v) for v in self.history],
+            "file_map": self.file_map() if self.status != QUEUED else None,
             "retry_in": max(0, round(self.retry_at - time.time())) if self.retry_at else None,
         }
 

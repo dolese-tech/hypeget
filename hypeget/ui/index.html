@@ -13,7 +13,8 @@
   <!-- Title bar (custom: the native window is frameless) -->
   <header class="titlebar pywebview-drag-region">
     <img class="logo" src="icons/logo-small.svg" width="22" height="22" alt="">
-    <div class="title">HyperGet Downloader</div>
+    <div class="title">HyperGet Downloader<button class="pro-pill btn-like" data-cmd="plans" title="Pro features are free during the preview"><svg viewBox="0 0 10 10"><path d="M5 0l1.3 3.4L10 3.8 7.2 6.1 8.1 10 5 7.9 1.9 10l.9-3.9L0 3.8l3.7-.4z" fill="currentColor"/></svg>PRO</button></div>
+    <span class="lic" id="lic">Pro preview · free for now</span>
     <div class="win-controls">
       <button data-win="min" title="Minimize"><svg viewBox="0 0 12 12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.2"/></svg></button>
       <button data-win="max" title="Maximize"><svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.1"/></svg></button>
@@ -60,6 +61,7 @@
       <div class="dropdown">
         <button data-cmd="details">Show details panel<kbd id="detailsCheck">✓</kbd></button>
         <button data-cmd="theme">Dark theme<kbd id="themeCheck"></kbd></button>
+        <button data-cmd="stats">Statistics</button>
       </div>
     </div>
     <div class="menu"><button>Help</button>
@@ -68,8 +70,11 @@
         <button data-cmd="about">About HyperGet</button>
       </div>
     </div>
-    <div class="menu"><button>Upgrade</button>
+    <div class="menu"><button>Account</button>
       <div class="dropdown">
+        <button data-cmd="plans">HyperGet Pro…</button>
+        <button data-cmd="stats">Statistics</button>
+        <hr>
         <button data-cmd="sites">Video site support…</button>
         <button data-cmd="about">Check version</button>
       </div>
@@ -86,6 +91,7 @@
     <button class="tool" data-act="scheduler"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Scheduler</button>
     <button class="tool" data-act="queue"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h11"/></svg></span>Queue</button>
     <button class="tool" data-act="grabber"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>Grabber</button>
+    <button class="tool" data-act="stats"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Statistics</button>
     <button class="tool" data-act="options"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg></span>Options</button>
     <div class="spacer"></div>
     <div class="speed-limit menu" id="speedMenu">
@@ -99,17 +105,23 @@
   <div class="body">
     <aside class="sidebar" id="sidebar">
       <h3>CATEGORIES</h3>
-      <button class="nav-item sel" data-filter="all">All downloads<span class="count" data-count="all">0</span></button>
-      <button class="nav-item" data-filter="cat:Compressed">Compressed<span class="count" data-count="Compressed">0</span></button>
-      <button class="nav-item" data-filter="cat:Documents">Documents<span class="count" data-count="Documents">0</span></button>
-      <button class="nav-item" data-filter="cat:Music">Music<span class="count" data-count="Music">0</span></button>
-      <button class="nav-item" data-filter="cat:Programs">Programs<span class="count" data-count="Programs">0</span></button>
-      <button class="nav-item" data-filter="cat:Video">Video<span class="count" data-count="Video">0</span></button>
+      <button class="nav-item sel" data-filter="all"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>All downloads</span><span class="count" data-count="all">0</span></button>
+      <button class="nav-item" data-filter="cat:Compressed"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM11 3v4M11 9v2M11 13v2"/></svg>Compressed</span><span class="count" data-count="Compressed">0</span></button>
+      <button class="nav-item" data-filter="cat:Documents"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM9 12h6M9 16h6"/></svg>Documents</span><span class="count" data-count="Documents">0</span></button>
+      <button class="nav-item" data-filter="cat:Music"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM19 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/></svg>Music</span><span class="count" data-count="Music">0</span></button>
+      <button class="nav-item" data-filter="cat:Programs"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v11H4zM9 20h6M12 16v4"/></svg>Programs</span><span class="count" data-count="Programs">0</span></button>
+      <button class="nav-item" data-filter="cat:Video"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h12v12H4zM16 10l5-3v10l-5-3"/></svg>Video</span><span class="count" data-count="Video">0</span></button>
       <h3 class="second">STATUS</h3>
-      <button class="nav-item" data-filter="unfinished">Unfinished<span class="count" data-count="unfinished">0</span></button>
-      <button class="nav-item" data-filter="finished">Finished<span class="count" data-count="finished">0</span></button>
-      <button class="nav-item" data-filter="queues">Queues<span class="count" data-count="queues">0</span></button>
-      <button class="nav-item" data-filter="grabber">Grabber projects<span class="count" data-count="grabber">0</span></button>
+      <button class="nav-item" data-filter="unfinished"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"/></svg>Unfinished</span><span class="count" data-count="unfinished">0</span></button>
+      <button class="nav-item" data-filter="finished"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12l4 4L19 7"/></svg>Finished</span><span class="count" data-count="finished">0</span></button>
+      <h3 class="second">QUEUES &amp; LISTS</h3>
+      <button class="nav-item" data-filter="queues"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 14l4 4-4 4"/></svg>Queue</span><span class="count" data-count="queues">0</span></button>
+      <div id="groupNav"></div>
+      <button class="nav-item" data-filter="stats"><span class="lbl"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Statistics</span><span class="count"></span></button>
+      <div class="side-card" id="todayCard" data-cmd="stats" title="Open statistics">
+        <div class="k">TODAY</div><div class="v" id="todayBytes">0 B</div><div class="s" id="todayNote">No downloads yet</div>
+        <svg id="todaySpark" viewBox="0 0 180 34" preserveAspectRatio="none"></svg>
+      </div>
     </aside>
 
     <main class="main">
@@ -132,7 +144,8 @@
         <div class="tbody" id="tbody"></div>
       </section>
 
-      <section class="card details" id="details"></section>
+      <section class="card details pro" id="details"></section>
+      <section class="stats" id="stats"></section>
     </main>
   </div>
 
@@ -140,7 +153,9 @@
     <span><b id="sbActive">0</b> active</span>
     <span>Total speed <b id="sbSpeed">0 B/s</b></span>
     <span>Queue: <b id="sbQueue">0</b> waiting</span>
-    <span id="sbRule" class="hidden"></span>
+    <span id="sbRule" class="sb-chip b hidden"></span>
+    <span id="sbDone" class="sb-chip hidden"></span>
+    <span id="sbCap" class="sb-chip hidden"></span>
     <span class="right" id="sbScheduler">Scheduler off</span>
   </footer>
 </div>
