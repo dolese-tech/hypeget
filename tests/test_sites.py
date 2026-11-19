@@ -7,6 +7,8 @@ yt_dlp = pytest.importorskip("yt_dlp")
 
 from hypeget.engine import sites  # noqa: E402
 
+REAL_YDL = yt_dlp.YoutubeDL      # some tests swap yt-dlp for a fake; format checks use the real one
+
 DUR = 600  # seconds
 
 
@@ -39,7 +41,7 @@ YOUTUBE = {
 
 def select(spec, info=YOUTUBE):
     """Run yt-dlp's real format selector over our spec, as a download would."""
-    ydl = yt_dlp.YoutubeDL({"quiet": True})
+    ydl = REAL_YDL({"quiet": True})
     chosen = list(ydl.build_format_selector(spec)({"formats": info["formats"], "has_merged_format": True,
                                                    "incomplete_formats": False}))
     assert chosen, spec
@@ -50,7 +52,7 @@ def select(spec, info=YOUTUBE):
 def test_quality_list_like_idm():
     opts = sites.build_options(YOUTUBE, can_merge=True)
     labels = [o["label"] for o in opts]
-    assert labels == ["2160p 4K", "1440p 2K", "1080p Full HD", "720p60 HD", "360p", "144p", "Audio only"]
+    assert labels == ["2160p 4K", "1440p 2K", "1080p Full HD", "720p60 HD", "360p", "144p", "Audio only", "MP3 audio"]
     by = {o["label"]: o for o in opts}
     assert by["2160p 4K"]["container"] == "mkv" and by["2160p 4K"]["detail"] == "MKV · VP9"
     assert by["1080p Full HD"]["container"] == "mp4" and by["1080p Full HD"]["detail"] == "MP4 · H.264"
@@ -78,6 +80,7 @@ def test_fallback_only_explains_missing_hd(monkeypatch):
     """What happened on Windows before Deno was bundled: YouTube sent just the fallback."""
     poor = dict(YOUTUBE, formats=[f for f in YOUTUBE["formats"] if f["format_id"] in ("18", "140")])
     monkeypatch.setattr(sites, "youtube_hd_ready", lambda: False)
+    monkeypatch.setattr(sites, "ffmpeg_path", lambda: "ffmpeg")
 
     class FakeYDL:
         def __init__(self, opts): self.opts = opts
@@ -87,7 +90,7 @@ def test_fallback_only_explains_missing_hd(monkeypatch):
 
     monkeypatch.setattr(sites.yt_dlp, "YoutubeDL", FakeYDL)
     info = sites.inspect("https://www.youtube.com/watch?v=x")
-    assert [o["label"] for o in info["options"]] == ["360p", "Audio only"]
+    assert [o["label"] for o in info["options"]] == ["360p", "Audio only", "MP3 audio"]
     assert "HD and 4K" in info["note"]
 
 
@@ -117,8 +120,89 @@ def test_browser_cookies_become_a_cookie_file():
         assert lines[0] == "# Netscape HTTP Cookie File"
         assert lines[1].split("\t") == [".youtube.com", "TRUE", "/", "TRUE", "0", "SID", "abc"]
         assert "Cookie" not in opts.get("http_headers", {})
-        jar = yt_dlp.YoutubeDL({"quiet": True, "cookiefile": path}).cookiejar   # yt-dlp accepts it
+        jar = REAL_YDL({"quiet": True, "cookiefile": path}).cookiejar   # yt-dlp accepts it
         assert {c.name for c in jar} == {"SID", "HSID"}
     finally:
         sites._cleanup(opts)
     assert not os.path.exists(path)
+
+
+# ---------------------------------------------------------------- subtitles, playlists, MP3
+class FakeYDL:
+    result = None
+    seen = []
+
+    def __init__(self, opts):
+        self.opts = opts
+        FakeYDL.seen.append(opts)
+
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+    def extract_info(self, url, download=False):
+        if download and self.opts.get("postprocessors") and any(
+                p["key"] == "FFmpegExtractAudio" for p in self.opts["postprocessors"]):
+            open(self.opts["outtmpl"].replace("%(ext)s", "mp3"), "wb").write(b"ID3")   # what FFmpeg leaves
+        return FakeYDL.result
+
+
+def test_subtitle_choices():
+    info = {"subtitles": {"sw": [{"ext": "vtt", "name": "Swahili"}], "live_chat": [{}]},
+            "automatic_captions": {"en-orig": [{"name": "English (Original)"}], "en": [{"name": "English"}],
+                                   "fr": [{"name": "French"}]}}
+    assert sites.subtitle_choices(info) == [
+        {"id": "sw", "label": "Swahili"},
+        {"id": "auto:en-orig", "label": "English (Original) (automatic)"}]
+
+
+def test_playlist_lists_its_videos(monkeypatch):
+    FakeYDL.result = {"_type": "playlist", "title": "Lectures", "entries": [
+        {"url": "abc123", "ie_key": "Youtube", "title": "Lecture 1", "duration": 600},
+        {"url": "https://www.youtube.com/watch?v=def456", "title": "Lecture 2"}, None]}
+    FakeYDL.seen = []
+    monkeypatch.setattr(sites.yt_dlp, "YoutubeDL", FakeYDL)
+    monkeypatch.setattr(sites, "ffmpeg_path", lambda: "ffmpeg")
+    info = sites.inspect("https://www.youtube.com/playlist?list=PL1")
+    assert FakeYDL.seen[0]["extract_flat"] == "in_playlist"          # fast: no per-video loading
+    assert info["kind"] == "playlist" and info["title"] == "Lectures"
+    assert [e["url"] for e in info["entries"]] == ["https://www.youtube.com/watch?v=abc123",
+                                                   "https://www.youtube.com/watch?v=def456"]
+    labels = [o["label"] for o in info["options"]]
+    assert labels[:3] == ["Up to 2160p 4K", "Up to 1080p Full HD", "Up to 720p HD"]
+    assert labels[-2:] == ["Audio only", "MP3 audio"]
+    by = {o["label"]: o for o in info["options"]}
+    # the playlist choice works on a real video too: best <=1080p, H.264 + AAC
+    assert select(by["Up to 1080p Full HD"]["format"]) == ["137", "140"]
+    assert select(by["Up to 2160p 4K"]["format"])[0] in ("313", "401")
+
+
+def run_capture(monkeypatch, tmp_path, options, quality, title="Song"):
+    """Run run_site with a fake yt-dlp and return the options it was given."""
+    from hypeget.engine.download import Download
+    from hypeget.engine.segments import RunContext
+    from hypeget.engine.throttle import Throttle
+    import threading
+    FakeYDL.seen = []
+    FakeYDL.result = {"requested_downloads": [{"filepath": str(tmp_path / "x.webm")}]}
+    monkeypatch.setattr(sites.yt_dlp, "YoutubeDL", FakeYDL)
+    monkeypatch.setattr(sites, "ffmpeg_path", lambda: "ffmpeg")
+    dl = Download(url="https://youtu.be/x", save_dir=str(tmp_path), kind="site", title=title,
+                  quality=quality, options=options)
+    sites.run_site(dl, RunContext(Throttle(0), threading.Event()))
+    return FakeYDL.seen[-1], dl
+
+
+def test_mp3_converts_with_ffmpeg(monkeypatch, tmp_path):
+    opts, dl = run_capture(monkeypatch, tmp_path, {"format": "ba/b", "container": "mp3"}, "audio")
+    assert {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"} in opts["postprocessors"]
+    assert "merge_output_format" not in opts
+    assert dl.filename == "Song.mp3"
+
+
+def test_subtitles_saved_as_srt(monkeypatch, tmp_path):
+    opts, _ = run_capture(monkeypatch, tmp_path, {"format": "b", "container": "mp4", "subtitles": "sw"}, "1080p")
+    assert opts["writesubtitles"] and opts["subtitleslangs"] == ["sw"]
+    assert {"key": "FFmpegSubtitlesConvertor", "format": "srt"} in opts["postprocessors"]
+    opts, _ = run_capture(monkeypatch, tmp_path, {"format": "b", "container": "mp4", "subtitles": "auto:en-orig"}, "1080p")
+    assert opts["writeautomaticsub"] and opts["subtitleslangs"] == ["en-orig"]
+    assert opts["merge_output_format"] == "mp4"

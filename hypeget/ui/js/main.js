@@ -75,6 +75,18 @@ function render() {
   $("#sbQueue").textContent = s.waiting;
   $("#sbScheduler").textContent = s.scheduler;
 
+  // speed rule + 'when all downloads finish'
+  const rule = $("#sbRule");
+  rule.classList.toggle("hidden", !s.speed_rule_active);
+  if (s.speed_rule_active) rule.textContent = `Working-hours limit ${bytes(s.effective_speed_limit, 1)}/s`;
+  document.querySelectorAll("[data-done]").forEach((k) => { k.textContent = k.dataset.done === s.when_done ? "✓" : ""; });
+  const pend = s.pending_action, banner = $("#doneBanner");
+  banner.classList.toggle("hidden", !pend);
+  if (pend) {
+    const what = { sleep: "Putting the computer to sleep", shutdown: "Shutting down the computer", exit: "Closing HyperGet" }[pend.action] || pend.action;
+    $("#doneText").textContent = `All downloads finished. ${what} in ${pend.in} s…`;
+  }
+
   // speed limit
   const lim = s.settings.speed_limit;
   const preset = SPEEDS.find(([v]) => v === lim);
@@ -143,9 +155,18 @@ function afterAdd() {
   refresh();
 }
 
-function run(cmd) {
+function run(cmd, arg) {
   closeMenus();
-  const f = commands[cmd];
+  if (cmd.startsWith("done:")) {
+    const action = cmd.slice(5);
+    api.whenDone(action).then(() => {
+      if (action !== "nothing") D.toast({ sleep: "The computer will sleep when all downloads finish",
+        shutdown: "The computer will shut down when all downloads finish", exit: "HyperGet will close when all downloads finish" }[action]);
+      refresh();
+    }).catch((e) => D.toast(e.message));
+    return;
+  }
+  const f = arg !== undefined && cmd === "add" ? () => D.addUrlDialog(arg, afterAdd) : commands[cmd];
   if (f) Promise.resolve(f()).catch((e) => D.toast(e.message));
 }
 
@@ -333,7 +354,13 @@ if (!window.pywebview && !navigator.userAgent.includes("pywebview")) {
 }
 
 // The app (tray menu, a second HyperGet start) can run commands here, e.g. "add".
-window.hgCommand = (cmd) => { if (commands[cmd]) run(cmd); };
+// "add" may carry a link (copied to the clipboard); don't stack dialogs over an open one.
+window.hgCommand = (cmd, arg) => {
+  if (!commands[cmd]) return;
+  if (arg !== undefined && (!isUrl(arg) || document.querySelector(".overlay"))) return;
+  run(cmd, arg);
+};
+$("#doneCancel").addEventListener("click", () => api.cancelWhenDone().then(refresh));
 
 // ------------------------------------------------------------------ go
 refresh();

@@ -11,7 +11,8 @@ from ..storage.state import StateStore
 from . import hls, net, sites
 from .categories import CATEGORIES, category_for
 from .download import (ACTIVE, COMPLETE, ERROR, PAUSED, QUEUED, UNFINISHED, Download)
-from .scheduler import Scheduler
+from . import power
+from .scheduler import Scheduler, in_window
 from .segments import DownloadError, RunContext, Stopped, run_http
 from .throttle import Throttle
 
@@ -25,6 +26,17 @@ def guess_kind(url: str) -> str:
     if sites.supports(url):
         return "site"
     return "http"
+
+
+_NOT_RETRYABLE = ("HTTP 400", "HTTP 401", "HTTP 403", "HTTP 404", "HTTP 410", "DRM", "Live stream",
+                  "Not an HLS", "Empty playlist", "Only http", "not supported", "Unsupported URL",
+                  "Video unavailable", "Private video", "copyright")
+
+
+def retryable(error: str) -> bool:
+    """Worth trying again later: timeouts, dropped connections, busy servers.
+    Not worth it: missing files, no permission, DRM and other permanent refusals."""
+    return bool(error) and not any(x.lower() in error.lower() for x in _NOT_RETRYABLE)
 
 
 class Manager:
@@ -44,6 +56,11 @@ class Manager:
         self.queue_running = True
         self.grabber_projects = 0
         self.ui_show = None          # set by the app window: ui_show(command) brings it forward
+        self.on_exit = None          # set by the app: quit HyperGet (for 'when done: exit')
+        self.power = power.run       # replaced in tests
+        self._had_work = False       # something ran since 'when done' was armed
+        self.pending_action: dict | None = None   # {"action", "at"} countdown before when-done runs
+        self._applied_limit = None
         for d in self.store.load():
             self.downloads[d.id] = d
         self._ticker = threading.Thread(target=self._tick_loop, daemon=True)
@@ -97,6 +114,8 @@ class Manager:
         if not dl or dl.status in ACTIVE or dl.status == COMPLETE:
             return
         dl.error = ""
+        dl.retry_at = None
+        dl.retries = 0
         dl.status = QUEUED
         dl.in_queue = True
         self._dirty = True
@@ -111,6 +130,7 @@ class Manager:
             ev.set()
         elif dl.status == QUEUED:
             dl.status = PAUSED
+        dl.retry_at = None              # a paused download doesn't retry by itself
         dl.in_queue = False
         self._dirty = True
 
@@ -154,13 +174,73 @@ class Manager:
 
     def set_speed_limit(self, bps: int) -> None:
         self.config.update(speed_limit=bps)
-        self.throttle.set_limit(self.config.settings.speed_limit)
+        self._apply_speed(force=True)
 
     def update_settings(self, **changes) -> dict:
+        if "when_done" in changes:
+            self.set_when_done(str(changes.pop("when_done")))
         self.config.update(**changes)
-        self.throttle.set_limit(self.config.settings.speed_limit)
+        self._apply_speed(force=True)
         self._schedule()
         return self.config.to_dict()
+
+    # ---- speed rules -------------------------------------------------
+    def effective_speed_limit(self, now=None) -> tuple[int, bool]:
+        """(bytes/s, rule active?) - the rule's limit inside its time window."""
+        s = self.config.settings
+        if s.speed_rule_enabled and in_window(s.speed_rule_start, s.speed_rule_end, now):
+            return s.speed_rule_limit, True
+        return s.speed_limit, False
+
+    def _apply_speed(self, force: bool = False, now=None) -> None:
+        limit, _ = self.effective_speed_limit(now)
+        if force or limit != self._applied_limit:
+            self.throttle.set_limit(limit)
+            self._applied_limit = limit
+
+    # ---- when all downloads finish ------------------------------------
+    def set_when_done(self, action: str) -> None:
+        if action not in ("nothing", "sleep", "shutdown", "exit"):
+            action = "nothing"
+        self.config.update(when_done=action)
+        self.pending_action = None
+        self._had_work = any(d.status in ACTIVE or d.status == QUEUED for d in self.downloads.values())
+
+    def cancel_when_done(self) -> None:
+        """Stop a running countdown and switch the action off."""
+        self.pending_action = None
+        self.config.update(when_done="nothing")
+
+    def _busy(self) -> bool:
+        return any(d.status in ACTIVE or d.status == QUEUED or d.retry_at for d in self.downloads.values())
+
+    def _check_when_done(self, now: float) -> None:
+        action = self.config.settings.when_done
+        if action == "nothing":
+            self.pending_action = None
+            return
+        if self._busy():
+            self._had_work = True
+            self.pending_action = None          # new work arrived: wait again
+            return
+        if not self._had_work:
+            return
+        if self.pending_action is None:
+            self.pending_action = {"action": action, "at": now + 60}
+            return
+        if now >= self.pending_action["at"]:
+            self.pending_action = None
+            self._had_work = False
+            self.config.update(when_done="nothing")     # once only: never a surprise later
+            try:
+                self.save()
+            except OSError:
+                pass
+            if action == "exit":
+                if self.on_exit:
+                    self.on_exit()
+            else:
+                self.power(action)
 
     def shutdown(self) -> None:
         self._running = False
@@ -205,6 +285,12 @@ class Manager:
             "waiting": len(waiting),
             "queue_running": self.queue_running,
             "scheduler": self.scheduler.describe(s.scheduler_enabled, s.scheduler_start, s.scheduler_stop),
+            "speed_rule_active": self.effective_speed_limit()[1],
+            "effective_speed_limit": self.effective_speed_limit()[0],
+            "when_done": s.when_done,
+            "pending_action": ({"action": self.pending_action["action"],
+                                "in": max(0, round(self.pending_action["at"] - time.time()))}
+                               if self.pending_action else None),
             "settings": self.config.to_dict(),
             "features": {"sites": sites.available(), "ffmpeg": hls.ffmpeg_path() is not None,
                          "youtube_hd": sites.available() and sites.youtube_hd_ready()},
@@ -224,6 +310,7 @@ class Manager:
                 active += 1
 
     def _launch(self, dl: Download) -> None:
+        self._had_work = True            # even a download finishing between two ticks counts
         stop = threading.Event()
         self._stops[dl.id] = stop
         t = threading.Thread(target=self._run, args=(dl, stop), daemon=True, name=f"dl-{dl.id}")
@@ -238,11 +325,16 @@ class Manager:
             dl.status = COMPLETE
             dl.finished_at = time.time()
             dl.segments = []
+            dl.retries, dl.retry_at = 0, None
         except Stopped:
             dl.status = PAUSED
         except DownloadError as e:
             dl.status = PAUSED if stop.is_set() else ERROR
             dl.error = "" if stop.is_set() else str(e)
+            s = self.config.settings
+            if dl.status == ERROR and retryable(dl.error) and dl.retries < s.auto_retry:
+                dl.retry_at = time.time() + s.retry_delay * (2 ** dl.retries)
+                dl.retries += 1
         except Exception as e:  # noqa: BLE001
             dl.status = ERROR
             dl.error = str(e) or e.__class__.__name__
@@ -284,6 +376,16 @@ class Manager:
                 self.start_queue()
             elif action == "stop":
                 self.stop_all()
+            self._apply_speed()
+            wall = time.time()
+            for d in list(self.downloads.values()):
+                if d.status == ERROR and d.retry_at and wall >= d.retry_at:
+                    d.retry_at = None
+                    d.error = ""
+                    d.status = QUEUED
+                    self._dirty = True
+                    self._schedule()
+            self._check_when_done(wall)
             if any(d.status in ACTIVE for d in self.downloads.values()):
                 self._dirty = True
             if self._dirty and now - self._last_save > 2.0:

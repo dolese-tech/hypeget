@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
                     dl = m.add(it["url"], kind=it.get("kind") or None, filename=it.get("filename") or None,
                                save_dir=it.get("save_dir") or None, quality=it.get("quality") or "",
                                options={k: v for k, v in (it.get("options") or {}).items()
-                                        if k in ("variant_url", "audio_url", "format", "container")},
+                                        if k in ("variant_url", "audio_url", "format", "container", "subtitles")},
                                headers=it.get("headers"), title=it.get("title") or "",
                                page_url=it.get("page_url") or "", start=it.get("start", True))
                     created.append(dl.to_view())
@@ -179,6 +179,10 @@ class Handler(BaseHTTPRequestHandler):
                     m.start_queue()
                 elif action == "speed_limit":
                     m.set_speed_limit(int(self._body().get("bytes_per_sec", 0)))
+                elif action == "when_done":
+                    m.set_when_done(str(self._body().get("action", "nothing")))
+                elif action == "cancel_when_done":
+                    m.cancel_when_done()
                 else:
                     return self._json(404, {"error": "unknown action"})
                 return self._json(200, {"ok": True})

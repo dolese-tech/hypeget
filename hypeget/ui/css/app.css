@@ -120,7 +120,7 @@ input[type="text"], input[type="url"], input[type="number"], input[type="time"],
 
 .main {
   background: var(--bg-main); padding: 12px 16px 12px; min-width: 0; min-height: 0;
-  display: grid; grid-template-rows: 34px minmax(0, 1fr) auto; gap: 10px;
+  display: grid; grid-template-rows: 34px auto minmax(0, 1fr) auto; gap: 10px;
 }
 .main .search { display: flex; gap: 10px; }
 .search input {
@@ -298,3 +298,18 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; b
   .col-eta { display: none; }
   .tool { width: 60px; }
 }
+
+/* Pro: options rows, 'when all downloads finish' */
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.dropdown .sub-label { font-size: 11px; font-weight: 600; color: var(--text-3); padding: 4px 10px 2px; letter-spacing: .02em; }
+.hidden { display: none !important; }
+.banner { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--blue) 11%, var(--bg-card)); border: 1px solid color-mix(in srgb, var(--blue) 30%, transparent);
+  font-size: 13px; }
+.banner span { flex: 1; }
+.dialog .grab-list { max-height: 220px; }
+.main > .search { grid-row: 1; }
+.main > .banner { grid-row: 2; }
+.main > .table-card { grid-row: 3; }
+.main > .details { grid-row: 4; }
+.grab-item.pl-item { grid-template-columns: 20px 1fr; }

@@ -36,7 +36,7 @@ export function statusLabel(d) {
     case "downloading": return `${pct(d.progress)} · Downloading`;
     case "paused": return d.progress > 0 ? `${pct(d.progress)} · Paused` : "Paused";
     case "complete": return "Complete";
-    case "error": return `Error · ${d.error || "Failed"}`;
+    case "error": return d.retry_in != null ? `Retrying in ${d.retry_in}s · ${d.error || "Failed"}` : `Error · ${d.error || "Failed"}`;
     case "queued": return "Queued";
     case "connecting": return "Connecting…";
     case "merging": return "Merging…";

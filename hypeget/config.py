@@ -29,6 +29,14 @@ class Settings:
     theme: str = "light"
     close_to_tray: bool = True           # closing the window keeps HyperGet in the notification area
     notify_complete: bool = True         # pop-up when a download finishes or fails
+    auto_retry: int = 3                  # retries for downloads that fail on a network problem (0 = off)
+    retry_delay: int = 30                # seconds before the first retry; doubles each time
+    speed_rule_enabled: bool = False     # a different speed limit during part of the day
+    speed_rule_start: str = "08:00"
+    speed_rule_end: str = "17:00"
+    speed_rule_limit: int = 1024 * 1024  # bytes/s during the rule window (0 = unlimited)
+    clipboard_watch: bool = True         # offer links copied anywhere, like IDM
+    when_done: str = "nothing"           # nothing | sleep | shutdown | exit - runs once, then resets
 
 
 class Config:
@@ -75,6 +83,11 @@ class Config:
         s.connections = max(1, min(32, s.connections))
         s.max_active = max(1, min(20, s.max_active))
         s.speed_limit = max(0, s.speed_limit)
+        s.speed_rule_limit = max(0, s.speed_rule_limit)
+        s.auto_retry = max(0, min(10, s.auto_retry))
+        s.retry_delay = max(5, min(3600, s.retry_delay))
+        if s.when_done not in ("nothing", "sleep", "shutdown", "exit"):
+            s.when_done = "nothing"
         self.save()
         return s
 

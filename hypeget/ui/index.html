@@ -49,6 +49,11 @@
         <button data-cmd="stop">Stop all</button>
         <hr>
         <button data-cmd="clearfinished">Remove finished from list</button>
+        <hr><div class="sub-label">When all downloads finish</div>
+        <button data-cmd="done:nothing">Do nothing<kbd data-done="nothing"></kbd></button>
+        <button data-cmd="done:sleep">Sleep<kbd data-done="sleep"></kbd></button>
+        <button data-cmd="done:shutdown">Shut down<kbd data-done="shutdown"></kbd></button>
+        <button data-cmd="done:exit">Exit HyperGet<kbd data-done="exit"></kbd></button>
       </div>
     </div>
     <div class="menu"><button>View</button>
@@ -113,6 +118,8 @@
         <button type="button" class="btn-primary" data-act="add">Add URL</button>
       </form>
 
+      <div class="banner hidden" id="doneBanner"><span id="doneText"></span><button class="btn" id="doneCancel">Cancel</button></div>
+
       <section class="card table-card">
         <div class="grid-row thead" id="thead">
           <div data-sort="name">File name</div>
@@ -133,6 +140,7 @@
     <span><b id="sbActive">0</b> active</span>
     <span>Total speed <b id="sbSpeed">0 B/s</b></span>
     <span>Queue: <b id="sbQueue">0</b> waiting</span>
+    <span id="sbRule" class="hidden"></span>
     <span class="right" id="sbScheduler">Scheduler off</span>
   </footer>
 </div>

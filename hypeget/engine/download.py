@@ -49,6 +49,8 @@ class Download:
     in_queue: bool = True
     probed: bool = False
     filename_locked: bool = False      # user picked the name; don't replace from server
+    retries: int = 0                   # automatic retries used so far
+    retry_at: float | None = None      # wall-clock time of the next automatic retry
 
     # Runtime-only (not persisted)
     speed: float = field(default=0.0, compare=False)
@@ -159,6 +161,8 @@ class Download:
             "added": self.added,
             "finished_at": self.finished_at,
             "in_queue": self.in_queue,
+            "retries": self.retries,
+            "retry_in": max(0, round(self.retry_at - time.time())) if self.retry_at else None,
         }
 
 

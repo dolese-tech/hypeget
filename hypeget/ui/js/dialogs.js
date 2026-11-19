@@ -66,7 +66,7 @@ export function addUrlDialog(prefill = "", onDone) {
     body: `
       <div class="field"><label>Address</label><input type="url" id="au-url" placeholder="https://example.com/file.zip or a video page / .m3u8 link" value="${esc(prefill)}"></div>
       <div id="au-info"></div>
-      <div class="field"><label>Save as</label><input type="text" id="au-name" placeholder="Detected automatically"></div>
+      <div class="field" id="au-name-field"><label>Save as</label><input type="text" id="au-name" placeholder="Detected automatically"></div>
       <label class="check"><input type="checkbox" id="au-start" checked> Start download now</label>`,
     buttons: [
       { label: "Cancel" },
@@ -74,12 +74,25 @@ export function addUrlDialog(prefill = "", onDone) {
         const url = ov.querySelector("#au-url").value.trim();
         if (!isUrl(url)) throw new Error("Enter a valid http(s) link.");
         const name = ov.querySelector("#au-name").value.trim();
-        const item = { url, start: ov.querySelector("#au-start").checked };
+        const start = ov.querySelector("#au-start").checked;
+        if (info?.kind === "playlist") {
+          const picked = [...ov.querySelectorAll(".pl-item input:checked")].map((c) => info.entries[+c.dataset.i]);
+          if (!picked.length) throw new Error("Select at least one video.");
+          await api.addMany(picked.map((e) => ({ url: e.url, kind: "site", title: e.title, start,
+            quality: chosen.quality || "", page_url: url,
+            options: { format: chosen.format, container: chosen.container } })));
+          toast(`Added ${picked.length} video${picked.length > 1 ? "s" : ""}`);
+          onDone?.();
+          return;
+        }
+        const item = { url, start };
         if (info && chosen) {
           item.kind = info.kind;
           item.title = info.kind === "http" ? "" : info.title;
           item.quality = chosen.quality || "";
           item.options = { variant_url: chosen.variant_url, audio_url: chosen.audio_url, format: chosen.format, container: chosen.container };
+          const sub = ov.querySelector("#au-sub")?.value;
+          if (sub && chosen.container !== "mp3" && chosen.quality !== "audio") item.options.subtitles = sub;
         }
         if (name && name !== (info?.suggested || "")) item.filename = name;
         await api.add(item);
@@ -118,25 +131,44 @@ export function addUrlDialog(prefill = "", onDone) {
     return `${info.title}${q}${ext}`;
   }
 
-  function renderInfo() {
-    const opts = info.options;
-    const isVideo = info.kind !== "http";
-    let html = "";
-    if (isVideo) {
-      const dur = info.duration ? ` · ${Math.floor(info.duration / 60)}:${String(Math.round(info.duration % 60)).padStart(2, "0")}` : "";
-      if (info.note) html += `<div class="msg info">${esc(info.note)}</div>`;
-      html += `<div class="field"><label>Quality <span style="color:var(--text-3);font-weight:400">— ${esc(info.title)}${dur}</span></label>
-        <div class="qualities">${opts.map((o, i) => `
+  function qualityList(opts) {
+    return `<div class="qualities">${opts.map((o, i) => `
           <label class="quality ${o === chosen ? "sel" : ""}" data-i="${i}">
             <input type="radio" name="q" ${o === chosen ? "checked" : ""}>
             <span class="q">${esc(o.label)}</span><span class="d">${esc(o.detail || "")}</span>
             <span class="s">${o.est_size ? "≈ " + bytes(o.est_size) : ""}</span>
-          </label>`).join("")}</div></div>`;
+          </label>`).join("")}</div>`;
+  }
+
+  function renderInfo() {
+    const opts = info.options;
+    const isVideo = info.kind !== "http";
+    const isList = info.kind === "playlist";
+    ov.querySelector("#au-name-field").style.display = isList ? "none" : "";
+    let html = "";
+    if (isList) {
+      html += `<div class="field"><label>Playlist <span style="color:var(--text-3);font-weight:400">— ${esc(info.title)} · ${info.entries.length} videos</span></label>
+        <label class="check"><input type="checkbox" id="pl-all" checked> Select all</label>
+        <div class="grab-list">${info.entries.map((e, i) => `
+          <label class="grab-item pl-item"><input type="checkbox" data-i="${i}" checked>
+          <div style="min-width:0"><div class="n">${esc(e.title)}</div><div class="u">${e.duration ? `${Math.floor(e.duration / 60)}:${String(Math.round(e.duration % 60)).padStart(2, "0")} · ` : ""}${esc(e.url)}</div></div></label>`).join("")}</div></div>
+        <div class="field"><label>Quality for every video</label>${qualityList(opts)}</div>`;
+    } else if (isVideo) {
+      const dur = info.duration ? ` · ${Math.floor(info.duration / 60)}:${String(Math.round(info.duration % 60)).padStart(2, "0")}` : "";
+      if (info.note) html += `<div class="msg info">${esc(info.note)}</div>`;
+      html += `<div class="field"><label>Quality <span style="color:var(--text-3);font-weight:400">— ${esc(info.title)}${dur}</span></label>
+        ${qualityList(opts)}</div>`;
+      if (info.subtitles?.length) {
+        html += `<div class="field"><label>Subtitles</label><select id="au-sub"><option value="">None</option>${
+          info.subtitles.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join("")}</select></div>`;
+      }
     } else {
       const o = opts[0];
       html += `<div class="msg info">${esc(info.filename)} · ${o.est_size ? bytes(o.est_size) : "size unknown"} · ${esc(o.detail)}</div>`;
     }
     box.innerHTML = html;
+    const all = box.querySelector("#pl-all");
+    if (all) all.onchange = () => box.querySelectorAll(".pl-item input").forEach((c) => c.checked = all.checked);
     box.querySelectorAll(".quality").forEach((q) => q.onclick = () => {
       chosen = opts[+q.dataset.i];
       box.querySelectorAll(".quality").forEach((x) => x.classList.toggle("sel", x === q));
@@ -246,6 +278,17 @@ export function optionsDialog(state) {
       <div class="row2">
         <div class="field"><label>Speed limit (KB/s, 0 = unlimited)</label><input type="number" id="o-speed" min="0" value="${Math.round(s.speed_limit / 1024)}"></div>
       </div>
+      <div class="row2">
+        <div class="field"><label>Retry failed downloads (times, 0 = off)</label><input type="number" id="o-retry" min="0" max="10" value="${s.auto_retry}"></div>
+        <div class="field"><label>First retry after (seconds, then doubles)</label><input type="number" id="o-rdelay" min="5" max="3600" value="${s.retry_delay}"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="o-rule" ${s.speed_rule_enabled ? "checked" : ""}> Limit speed during working hours, so others on the network aren't slowed down</label>
+      <div class="row3">
+        <div class="field"><label>From</label><input type="time" id="o-rs" value="${esc(s.speed_rule_start)}"></div>
+        <div class="field"><label>To</label><input type="time" id="o-re" value="${esc(s.speed_rule_end)}"></div>
+        <div class="field"><label>Limit (KB/s)</label><input type="number" id="o-rl" min="1" value="${Math.round(s.speed_rule_limit / 1024)}"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="o-clip" ${s.clipboard_watch ? "checked" : ""}> Offer to download links I copy (files and video pages)</label>
       <label class="check"><input type="checkbox" id="o-tray" ${s.close_to_tray ? "checked" : ""}> Keep running in the notification area when the window is closed</label>
       <label class="check"><input type="checkbox" id="o-notify" ${s.notify_complete ? "checked" : ""}> Show a notification when a download finishes or fails</label>
       <div class="msg info">
@@ -262,6 +305,13 @@ export function optionsDialog(state) {
         speed_limit: Math.max(0, +ov.querySelector("#o-speed").value) * 1024,
         close_to_tray: ov.querySelector("#o-tray").checked,
         notify_complete: ov.querySelector("#o-notify").checked,
+        auto_retry: +ov.querySelector("#o-retry").value,
+        retry_delay: +ov.querySelector("#o-rdelay").value,
+        speed_rule_enabled: ov.querySelector("#o-rule").checked,
+        speed_rule_start: ov.querySelector("#o-rs").value || "08:00",
+        speed_rule_end: ov.querySelector("#o-re").value || "17:00",
+        speed_rule_limit: Math.max(1, +ov.querySelector("#o-rl").value) * 1024,
+        clipboard_watch: ov.querySelector("#o-clip").checked,
       });
       toast("Options saved");
     } }],

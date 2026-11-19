@@ -192,16 +192,66 @@ def build_options(info: dict, can_merge: bool) -> list[dict]:
                         "format": "ba[ext=m4a]/ba/b", "container": (a.get("ext") or "m4a"),
                         "est_size": _fsize(a, duration) or None,
                         "detail": f"{(a.get('ext') or 'm4a').upper()} · {round(a.get('abr') or a.get('tbr') or 0)} kbps"})
+    if best_audio and can_merge:      # FFmpeg converts to MP3
+        options.append({"id": "mp3", "label": "MP3 audio", "quality": "audio", "height": 0,
+                        "format": "ba/b", "container": "mp3",
+                        "est_size": int(192 * 1000 / 8 * duration) if duration else None,
+                        "detail": "MP3 · 192 kbps"})
     if not options:
         options.append({"id": "best", "label": "Best", "quality": "", "format": "b", "container": "mp4",
                         "est_size": None, "detail": ""})
     return options
 
 
+def playlist_options(can_merge: bool) -> list[dict]:
+    """One quality for every video in a playlist: the best each video has, up to the choice."""
+    out = []
+    for h, name in ((2160, "4K"), (1080, "Full HD"), (720, "HD"), (480, ""), (360, "")):
+        if not can_merge:
+            fmt, container = f"b[height<={h}]", "mp4"
+        elif h > 1080:
+            fmt, container = f"bv*[height<={h}]+ba/b[height<={h}]", "mkv"
+        else:
+            fmt = f"bv*[height<={h}][vcodec^=avc1]+ba[ext=m4a]/bv*[height<={h}]+ba/b[height<={h}]"
+            container = "mp4"
+        out.append({"id": f"p{h}", "label": f"Up to {h}p" + (f" {name}" if name else ""), "quality": f"{h}p",
+                    "format": fmt, "container": container, "est_size": None,
+                    "detail": f"{container.upper()} · best each video has"})
+    out.append({"id": "audio", "label": "Audio only", "quality": "audio", "format": "ba[ext=m4a]/ba/b",
+                "container": "m4a", "est_size": None, "detail": "M4A"})
+    if can_merge:
+        out.append({"id": "mp3", "label": "MP3 audio", "quality": "audio", "format": "ba/b",
+                    "container": "mp3", "est_size": None, "detail": "MP3 · 192 kbps"})
+    return out
+
+
+def subtitle_choices(info: dict) -> list[dict]:
+    """Subtitle languages a video offers: its own subtitles, then YouTube's automatic
+    captions in the original language and English."""
+    out, seen = [], set()
+    for lang, tracks in sorted((info.get("subtitles") or {}).items()):
+        if lang == "live_chat" or not tracks:
+            continue
+        name = (tracks[0].get("name") or lang) if isinstance(tracks, list) else lang
+        out.append({"id": lang, "label": name})
+        seen.add(lang)
+    auto = info.get("automatic_captions") or {}
+    original = next((k[:-5] for k in auto if k.endswith("-orig")), None)
+    for lang in [x for x in (original, "en") if x]:
+        key = lang + "-orig" if lang == original and lang + "-orig" in auto else lang
+        if key in auto and lang not in seen:
+            tracks = auto[key]
+            name = (tracks[0].get("name") or lang) if isinstance(tracks, list) and tracks else lang
+            out.append({"id": "auto:" + key, "label": f"{name} (automatic)"})
+            seen.add(lang)
+    return out[:40]
+
+
 def inspect(url: str, headers: dict | None = None) -> dict:
     if yt_dlp is None:
         raise DownloadError("Site support not installed (pip install yt-dlp)")
     opts = _base_opts(headers, url)
+    opts["extract_flat"] = "in_playlist"          # playlists: list the videos, don't load each one
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -210,11 +260,25 @@ def inspect(url: str, headers: dict | None = None) -> dict:
         raise DownloadError(msg[:200]) from e
     finally:
         _cleanup(opts)
-    if info.get("_type") == "playlist":
-        raise DownloadError("Playlists are not supported yet; open a single video")
-    options = build_options(info, ffmpeg_path() is not None)
+    can_merge = ffmpeg_path() is not None
+    if info.get("_type") in ("playlist", "multi_video"):
+        entries = []
+        for e in list(info.get("entries") or [])[:500]:
+            if not e:
+                continue
+            link = e.get("webpage_url") or e.get("url")
+            if link and not str(link).startswith("http") and e.get("ie_key") == "Youtube":
+                link = "https://www.youtube.com/watch?v=" + str(link)
+            if not link:
+                continue
+            entries.append({"url": link, "title": e.get("title") or link, "duration": e.get("duration") or 0})
+        if not entries:
+            raise DownloadError("This playlist has no videos HyperGet can open")
+        return {"kind": "playlist", "title": info.get("title") or "Playlist", "entries": entries,
+                "options": playlist_options(can_merge), "subtitles": []}
+    options = build_options(info, can_merge)
     out = {"kind": "site", "title": info.get("title") or "video", "duration": info.get("duration") or 0,
-           "thumbnail": info.get("thumbnail"), "options": options}
+           "thumbnail": info.get("thumbnail"), "options": options, "subtitles": subtitle_choices(info)}
     if "youtube" in (info.get("extractor_key") or "").lower() and not youtube_hd_ready():
         out["note"] = "HD and 4K need HyperGet's YouTube components; reinstall HyperGet to get them."
     return out
@@ -278,6 +342,19 @@ def run_site(dl: Download, ctx: RunContext) -> None:
     })
     if not audio_only and ffmpeg_path():
         opts["merge_output_format"] = container if container in ("mp4", "mkv", "webm") else "mp4"
+    post = []
+    if container == "mp3" and ffmpeg_path():
+        post.append({"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"})
+    sub = str(dl.options.get("subtitles") or "")
+    if sub:
+        auto = sub.startswith("auto:")
+        opts["writeautomaticsub" if auto else "writesubtitles"] = True
+        opts["subtitleslangs"] = [sub.split(":", 1)[1] if auto else sub]
+        opts["subtitlesformat"] = "srt/vtt/best"
+        if ffmpeg_path():
+            post.append({"key": "FFmpegSubtitlesConvertor", "format": "srt"})
+    if post:
+        opts["postprocessors"] = post
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(dl.url, download=True)
@@ -291,6 +368,8 @@ def run_site(dl: Download, ctx: RunContext) -> None:
         raise DownloadError(msg[:200]) from e
     finally:
         _cleanup(opts)
+    if container == "mp3" and final and not final.endswith(".mp3") and os.path.exists(stem + ".mp3"):
+        final = stem + ".mp3"                     # after converting to MP3
     if final and os.path.exists(final):
         dl.filename = os.path.basename(final)
         dl.size = dl.downloaded = os.path.getsize(final)

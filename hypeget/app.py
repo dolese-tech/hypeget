@@ -12,6 +12,8 @@ from .config import Config
 from .engine.manager import Manager
 from .instance import SingleInstance, ask_running_app
 from .server import ApiServer
+from .clipboard import ClipboardWatcher
+from .engine import sites
 from .tray import PystrayBackend, TrayController
 
 
@@ -75,8 +77,10 @@ class AppWindow:
         else:
             self.quit()
 
-    def show(self, command: str = "show"):
+    def show(self, command: str = "show", arg: str | None = None):
         command = command if command in UI_COMMANDS else "show"
+        if arg is not None and not (isinstance(arg, str) and arg.lower().startswith(("http://", "https://"))):
+            arg = None
         self.window.show()
         self.window.restore()
         try:                              # bring it in front of other windows
@@ -85,7 +89,8 @@ class AppWindow:
         except Exception:  # noqa: BLE001 - not supported everywhere
             pass
         if command != "show":
-            self.window.evaluate_js(f"window.hgCommand && window.hgCommand({json.dumps(command)})")
+            js_arg = f", {json.dumps(arg)}" if arg else ""
+            self.window.evaluate_js(f"window.hgCommand && window.hgCommand({json.dumps(command)}{js_arg})")
 
     def quit(self):
         self.quitting = True
@@ -167,11 +172,13 @@ def main(argv: list[str] | None = None) -> None:
     manager, server = start_backend(args.port)
     print(f"HyperGet running at {server.url}", flush=True)
     tray = None
+    clip = None
     try:
         if args.headless or args.browser:
+            manager.on_exit = server.httpd.shutdown      # 'when done: exit HyperGet'
             if args.browser:
                 webbrowser.open(server.url)
-                manager.ui_show = lambda command="show": webbrowser.open(server.url)
+                manager.ui_show = lambda command="show", arg=None: webbrowser.open(server.url)
             try:
                 server.thread.join()
             except KeyboardInterrupt:
@@ -196,10 +203,19 @@ def main(argv: list[str] | None = None) -> None:
         tray_up = tray.start()
         holder["win"] = AppWindow(webview, server.url, manager, tray_ok=lambda: tray_up,
                                   start_hidden=args.minimized and tray_up)
+        manager.on_exit = lambda: holder["win"].quit()
+        clip = ClipboardWatcher(
+            on_link=lambda link: holder["win"].show("add", link),
+            is_known=lambda link: any(d.url == link or d.page_url == link for d in list(manager.downloads.values())),
+            enabled=lambda: manager.config.settings.clipboard_watch,
+            supports_site=sites.supports)
+        clip.start()
         webview.start()
     finally:
         if tray is not None:
             tray.stop()
+        if clip is not None:
+            clip.stop()
         manager.ui_show = None
         clear_runtime(server.port)
         manager.shutdown()

@@ -12,6 +12,15 @@ def _parse(hhmm: str) -> dt.time | None:
         return None
 
 
+def in_window(start: str, end: str, now: dt.datetime | None = None) -> bool:
+    """Is the clock inside [start, end)? Windows may wrap midnight (22:00-06:00)."""
+    a, b = _parse(start), _parse(end)
+    if a is None or b is None or a == b:
+        return False
+    t = (now or dt.datetime.now()).time()
+    return a <= t < b if a < b else (t >= a or t < b)
+
+
 class Scheduler:
     def __init__(self):
         self._last_minute: str | None = None
