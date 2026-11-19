@@ -6,7 +6,11 @@ const send = (msg) => chrome.runtime.sendMessage(msg);
 let tab;
 
 function renderOptions(container, res) {
-  if (!res?.ok) { container.innerHTML = `<div class="msg err">${esc(res?.error || "Failed")}</div>`; return; }
+  if (!res?.ok) {
+    container.innerHTML = `<div class="msg err">${esc(res?.error || "Failed")}${res?.notInstalled
+      ? ` <a href="${esc(res.getUrl)}" target="_blank" rel="noopener">Get HyperGet</a>` : ""}</div>`;
+    return;
+  }
   const { info, source } = res;
   container.innerHTML = `<div class="sub" style="margin:6px 0 2px">${esc(info.title)}</div><div class="opts">${
     info.options.map((o, i) => `<button data-i="${i}" title="${esc(o.detail || "")}">${esc(o.label)}${o.est_size ? " · " + fmt(o.est_size) : ""}</button>`).join("")}</div>`;
@@ -21,7 +25,8 @@ async function init() {
   const st = await send({ type: "status" });
   const s = st.settings;
   $("#status").className = st.running ? "on" : st.installed ? "idle" : "off";
-  $("#status").innerHTML = `<span class="dot"></span>${st.running ? "Connected" : st.installed ? "Starts when needed" : "Not installed"}`;
+  $("#status").innerHTML = `<span class="dot"></span>${st.running ? "Connected" : st.installed ? "Starts when needed"
+    : `Not installed · <a href="${esc(st.getUrl)}" target="_blank" rel="noopener">Get HyperGet</a>`}`;
   $("#intercept").checked = s.intercept;
   $("#minMB").value = s.minInterceptMB;
 

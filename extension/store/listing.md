@@ -73,9 +73,9 @@ Some sites don't allow downloading their videos from the browser; on those the D
 | `cookies` | Reads the cookies for the single file the user chooses to download, so that downloads which require the user to be signed in work in the HyperGet app. |
 | `contextMenus` | Adds "Download with HyperGet" to the right-click menu for links, images, audio and video. |
 | `storage` | Saves the user's two settings: take over downloads on/off and the minimum file size. |
-| `nativeMessaging` | Connects to the HyperGet desktop app installed on the user's computer (native host `com.dolese.hyperget`), which performs the downloads. This is the extension's only way to reach the app. |
+| `nativeMessaging` | Connects to the HyperGet desktop app installed on the user's computer (native host `tech.dolese.hyperget`), which performs the downloads. This is the extension's only way to reach the app. |
 | Host permission `<all_urls>` | Needed on every site because the user can download from any site: to detect media in any tab, show the Download button on any video, and read cookies for the chosen file's site. |
-| Content script on all sites | Shows the "Download this video" button and quality menu over video players. It does not read or change page content otherwise. |
+| Content script on all sites | Shows the "Download this video" button and quality menu over video players. When the user clicks it, it reads the page's list of loaded video files (Resource Timing) to find the stream. It does not read or change page content otherwise. |
 
 **Remote code:** No, I am not using remote code. (All JavaScript ships in the package.)
 
@@ -104,6 +104,6 @@ Then tick all three certifications:
 > 1. Install and start HyperGet.
 > 2. Open any page with an HTML5 video, hover the video and click "Download this video", then pick a quality: the download appears in HyperGet.
 > 3. Click the toolbar button to see media detected on the tab.
-> If HyperGet is closed, the extension starts it. Without HyperGet installed, the popup shows "Not installed" and the browser keeps downloading files normally. The extension communicates only with the HyperGet app through native messaging (host `com.dolese.hyperget`); it makes no network requests of its own.
+> If HyperGet is closed, the extension starts it. Without HyperGet installed, the popup shows "Not installed" and the browser keeps downloading files normally. The extension communicates only with the HyperGet app through native messaging (host `tech.dolese.hyperget`); it makes no network requests of its own.
 
 Use the same notes in the Chrome Web Store if a reviewer asks for test instructions.

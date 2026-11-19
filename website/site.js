@@ -41,6 +41,43 @@
     setTimeout(() => t.remove(), 2600);
   }
 
+  // Download buttons: link straight to the files of the latest GitHub release.
+  // No release yet: say so instead of sending people to an empty page.
+  const assetLinks = document.querySelectorAll("[data-asset]");
+  if (assetLinks.length) {
+    const PATTERNS = { setup: /^HyperGet-Setup-.*\.exe$/i, portable: /^HyperGet-portable-.*\.zip$/i };
+    const notice = document.getElementById("releaseNotice");
+    const unavailable = () => {
+      assetLinks.forEach((a) => {
+        a.classList.add("is-disabled");
+        a.setAttribute("aria-disabled", "true");
+        a.removeAttribute("href");
+      });
+      if (notice) notice.hidden = false;
+    };
+    fetch("https://api.github.com/repos/dolese/hypeget/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
+      .then((r) => {
+        if (r.status === 404) return null;            // no release published yet
+        if (!r.ok) throw new Error(String(r.status));  // rate limit etc.: keep the fallback links
+        return r.json();
+      })
+      .then((rel) => {
+        if (!rel) return unavailable();
+        let found = 0;
+        assetLinks.forEach((a) => {
+          const asset = (rel.assets || []).find((x) => PATTERNS[a.dataset.asset]?.test(x.name));
+          if (!asset) return;
+          a.href = asset.browser_download_url;
+          found++;
+          document.querySelectorAll(`[data-file="${a.dataset.asset}"]`).forEach((el) => { el.textContent = asset.name; });
+        });
+        if (!found) return unavailable();
+        const v = String(rel.tag_name || "").replace(/^v/, "");
+        if (v) document.querySelectorAll("[data-version]").forEach((el) => { el.textContent = v; });
+      })
+      .catch(() => { /* GitHub unreachable: the buttons keep linking to the releases page */ });
+  }
+
   const copy = document.getElementById("copyLink");
   if (copy) {
     copy.addEventListener("click", async () => {

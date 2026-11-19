@@ -179,6 +179,11 @@ p { margin: 0; }
 .dl-step code { font: 500 12.5px var(--mono); background: var(--card); padding: 1px 6px; border-radius: 5px; color: var(--navy); }
 .reqs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 28px; font-size: 13.5px; color: var(--muted); }
 
+/* release notice + unavailable buttons */
+.notice { background: #FFF7E6; border: 1px solid #F5D9A8; color: #7A4B00; border-radius: 16px; padding: 16px 20px; font-size: 15px; text-align: center; }
+.notice b { color: #5C3800; }
+.btn.is-disabled { opacity: .45; pointer-events: none; cursor: default; }
+
 /* toast */
 .toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--navy); color: var(--on-navy); padding: 10px 16px; border-radius: 12px; font-size: 14px; box-shadow: 0 12px 30px rgba(22,35,91,.3); z-index: 50; }
 

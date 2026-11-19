@@ -58,7 +58,7 @@ The next Windows build uses them twice:
   and `HKCU\Software\Microsoft\Edge\Extensions\<id>`, see `packaging/installer.iss`) so
   the browsers offer the extension after installing HyperGet.
 - **Native messaging**: the IDs are written to `hypeget/store_ids.json` inside the app,
-  so HyperGet's browser helper (`com.dolese.hyperget`) accepts the store versions.
+  so HyperGet's browser helper (`tech.dolese.hyperget`) accepts the store versions.
   Without this step the store extension shows "Not installed" even with HyperGet
   installed. The unpacked extension that ships with HyperGet always works: its ID is
   pinned by the `key` in `extension/manifest.json`.

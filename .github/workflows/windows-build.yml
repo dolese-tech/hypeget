@@ -113,7 +113,7 @@ jobs:
           Write-Host "HyperGet.exe started, served the UI, found ffmpeg and yt-dlp; the browser helper answered"
           # Registration writes the manifest + HKCU keys for each browser
           Start-Process dist\HyperGet\HyperGet.exe -ArgumentList "--register" -Wait
-          Get-Item "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.dolese.hyperget" | Out-Host
+          Get-Item "HKCU:\Software\Google\Chrome\NativeMessagingHosts\tech.dolese.hyperget" | Out-Host
 
       - name: Portable zip
         shell: pwsh

@@ -28,6 +28,7 @@
       .opt .q { font-weight: 600; } .opt .d { color: #64748b; font-size: 11.5px; } .opt .s { color: #334155; font-size: 12px; }
       .note { padding: 10px; color: #334155; line-height: 1.45; font-size: 12.5px; }
       .note.err { color: #dc2626; }
+      .note a { color: #16235B; font-weight: 600; text-decoration: underline; }
       .spin { width: 13px; height: 13px; border: 2px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%;
         display: inline-block; vertical-align: -2px; margin-right: 8px; animation: s .7s linear infinite; }
       @keyframes s { to { transform: rotate(360deg); } }
@@ -94,6 +95,18 @@
   const fmtSize = (n) => !n ? "" : n > 1024 ** 3 ? `≈ ${(n / 1024 ** 3).toFixed(1)} GB` : `≈ ${Math.round(n / 1024 ** 2)} MB`;
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+  // Every stream/media file this page loaded, from the browser's own resource
+  // list. Catches requests made before the extension's background woke up.
+  function loadedMedia() {
+    try {
+      return [...new Set(performance.getEntriesByType("resource").map((e) => e.name))]
+        .filter((u) => /^https?:/.test(u) && /\.(m3u8|mp4|webm|m4v|mov|mkv)(\?|$)/i.test(u.split("#")[0]))
+        .slice(-40);
+    } catch (e) {
+      return [];
+    }
+  }
+
   async function openPicker() {
     mount();
     if (!current) {
@@ -108,13 +121,15 @@
     const src = current && (current.currentSrc || current.src);
     let res;
     try {
-      res = await chrome.runtime.sendMessage({ type: "videoOptions", pageUrl: location.href, pageTitle: document.title.trim().slice(0, 120), src: src && !src.startsWith("blob:") ? src : "" });
+      res = await chrome.runtime.sendMessage({ type: "videoOptions", pageUrl: location.href, pageTitle: document.title.trim().slice(0, 120), resources: loadedMedia(), src: src && !src.startsWith("blob:") ? src : "" });
     } catch (e) {
       res = { ok: false, error: "Extension was updated — reload this page." };
     }
     if (!menuOpen) return;
     if (!res?.ok) {
-      menu.innerHTML = `<div class="note err">${esc(res?.error || "Something went wrong")}</div>`;
+      menu.innerHTML = res?.notInstalled
+        ? `<div class="note err">${esc(res.error)} <a href="${esc(res.getUrl)}" target="_blank" rel="noopener">Get HyperGet</a></div>`
+        : `<div class="note err">${esc(res?.error || "Something went wrong")}</div>`;
       return;
     }
     const { info, source } = res;
@@ -126,7 +141,9 @@
       const r = await chrome.runtime.sendMessage({ type: "download", source, info, option });
       menu.innerHTML = r?.ok
         ? `<div class="note">✓ Added to HyperGet (${esc(option.label)}).</div>`
-        : `<div class="note err">${esc(r?.error || "Failed")}</div>`;
+        : r?.notInstalled
+          ? `<div class="note err">${esc(r.error)} <a href="${esc(r.getUrl)}" target="_blank" rel="noopener">Get HyperGet</a></div>`
+          : `<div class="note err">${esc(r?.error || "Failed")}</div>`;
       setTimeout(() => { closeMenu(); hide(); }, 1600);
     });
   }

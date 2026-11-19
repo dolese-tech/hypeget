@@ -116,10 +116,10 @@ def test_host_starts_the_app_when_needed(home, tmp_path):
 def test_registration_writes_runnable_host(home, tmp_path, running_app):
     target = tmp_path / "NativeMessagingHosts"
     written = native_reg.register(extra_dirs=[str(target)])
-    mpath = target / "com.dolese.hyperget.json"
+    mpath = target / "tech.dolese.hyperget.json"
     assert str(mpath) in written
     m = json.loads(mpath.read_text())
-    assert m["name"] == "com.dolese.hyperget" and m["type"] == "stdio"
+    assert m["name"] == "tech.dolese.hyperget" and m["type"] == "stdio"
     assert m["allowed_origins"] == ["chrome-extension://oeclpagllkokmfmdpapcaeljjcbndgao/"]
     assert os.access(m["path"], os.X_OK)
     # The browser runs exactly this program: talk to it like Chrome would.

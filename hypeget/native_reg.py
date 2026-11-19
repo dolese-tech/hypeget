@@ -15,7 +15,7 @@ import sys
 
 from .config import app_home
 
-HOST_NAME = "com.dolese.hyperget"
+HOST_NAME = "tech.dolese.hyperget"
 
 # The extension's fixed ID (from the "key" in extension/manifest.json). Store
 # IDs are added by the release build in store_ids.json once the stores

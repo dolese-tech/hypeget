@@ -1,13 +1,14 @@
 // HyperGet extension service worker.
 // - Detects media (HLS playlists, video/audio files) loaded by each tab.
 // - Talks to the HyperGet app through native messaging, like IDM: the browser
-//   starts HyperGet's helper (com.dolese.hyperget), which starts the app if needed.
+//   starts HyperGet's helper (tech.dolese.hyperget), which starts the app if needed.
 // - Optional: hands browser downloads over to HyperGet (like IDM).
 
 importScripts("config.js");
 
-const HOST = "com.dolese.hyperget";
-const NOT_INSTALLED = "HyperGet isn't installed on this computer. Get it at hyperget.dolese.tech";
+const HOST = "tech.dolese.hyperget";
+const NOT_INSTALLED = "HyperGet isn't installed on this computer.";
+const GET_URL = "https://hyperget.dolese.tech/download";
 const DEFAULTS = { intercept: true, minInterceptMB: 1 };
 const media = new Map();          // tabId -> Map(url -> item)
 const reqHeaders = new Map();     // requestId -> {referer, cookie}
@@ -158,7 +159,7 @@ async function cleanHeaders(h, url) {
 
 // Pick what the page's video really is: a supported site page (YouTube...) or the
 // best media the tab loaded (HLS master first, then the biggest file).
-async function videoOptions(tabId, pageUrl, src, pageTitle) {
+async function videoOptions(tabId, pageUrl, src, pageTitle, resources = []) {
   if (hypergetRestricted(pageUrl)) {
     return { ok: false, error: "Video download isn't available on this site from the browser. Copy the page link and paste it into HyperGet (Add URL)." };
   }
@@ -166,7 +167,17 @@ async function videoOptions(tabId, pageUrl, src, pageTitle) {
   const candidates = [];
   if (src && /^https?:/.test(src)) candidates.push({ url: src, headers: { Referer: pageUrl } });
   candidates.push({ url: pageUrl, headers: { Referer: pageUrl }, page: true });
-  for (const m of tabMedia(tabId)) candidates.push(m);
+  // Streams seen by webRequest, plus the ones the page itself reports loading
+  // (the page's list also covers requests made while this worker was asleep).
+  const media = tabMedia(tabId);
+  const known = new Set(media.map((m) => m.url));
+  for (const url of resources.slice(0, 40)) {
+    if (typeof url !== "string" || !/^https?:/.test(url) || known.has(url) || SEGMENT.test(url)) continue;
+    known.add(url);
+    media.push({ url, kind: /\.m3u8(\?|$)/i.test(url) ? "hls" : "file", headers: { Referer: pageUrl } });
+  }
+  media.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "hls" ? -1 : 1));
+  for (const m of media) candidates.push(m);
   // A page often loads both a master playlist (every quality) and one of its
   // variants (a single quality). Check the detected streams and keep the one
   // offering the most qualities instead of whichever loaded first.
@@ -186,7 +197,7 @@ async function videoOptions(tabId, pageUrl, src, pageTitle) {
       if (info.kind !== "hls") return found;          // a direct file or a site page: done
       if (!best || info.options.length > best.info.options.length) best = found;
     } catch (e) {
-      if (e.notInstalled) return { ok: false, error: e.message };
+      if (e.notInstalled) return { ok: false, notInstalled: true, error: e.message, getUrl: GET_URL };
       lastErr = e;
     }
   }
@@ -209,9 +220,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   (async () => {
     const tabId = msg.tabId ?? sender.tab?.id;
     switch (msg.type) {
-      case "status": return { ...(await appStatus()), settings: await settings() };
+      case "status": return { ...(await appStatus()), settings: await settings(), getUrl: GET_URL };
       case "media": return { items: tabMedia(tabId) };
-      case "videoOptions": return videoOptions(tabId, msg.pageUrl, msg.src, msg.pageTitle);
+      case "videoOptions": return videoOptions(tabId, msg.pageUrl, msg.src, msg.pageTitle, Array.isArray(msg.resources) ? msg.resources : []);
       case "inspect": {
         const headers = await cleanHeaders(msg.headers, msg.url);
         const info = await app("/api/inspect", { url: msg.url, headers });
@@ -221,7 +232,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       case "saveSettings": await chrome.storage.local.set(msg.settings); return { ok: true };
       default: return { ok: false, error: "unknown message" };
     }
-  })().then(reply, (e) => reply({ ok: false, error: e.message }));
+  })().then(reply, (e) => reply({ ok: false, error: e.message, notInstalled: !!e.notInstalled, getUrl: GET_URL }));
   return true;
 });
 

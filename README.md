@@ -65,7 +65,7 @@ Settings and the download list live in `~/.hypeget` (override with `HYPEGET_HOME
 3. Hover a video and click **Download this video**, then pick a quality.
 
 The extension reaches the app through **native messaging**, like IDM: the browser starts
-HyperGet's helper (`com.dolese.hyperget`, `hypeget/native_host.py`), which forwards
+HyperGet's helper (`tech.dolese.hyperget`, `hypeget/native_host.py`), which forwards
 requests to the running app and starts HyperGet if it's closed. HyperGet registers the
 helper for Chrome, Edge, Brave and Chromium every time it starts (`hypeget/native_reg.py`,
 per user, no admin rights). Only the extension with the pinned ID
