@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HyperGet Downloader</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+  <!-- Title bar (custom: the native window is frameless) -->
+  <header class="titlebar pywebview-drag-region">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></div>
+    <div class="title">HyperGet Downloader</div>
+    <div class="win-controls">
+      <button data-win="min" title="Minimize"><svg viewBox="0 0 12 12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.2"/></svg></button>
+      <button data-win="max" title="Maximize"><svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.1"/></svg></button>
+      <button data-win="close" class="close" title="Close"><svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.2"/></svg></button>
+    </div>
+  </header>
+
+  <!-- Menu bar -->
+  <nav class="menubar" id="menubar">
+    <div class="menu"><button>Tasks</button>
+      <div class="dropdown">
+        <button data-cmd="add">Add URL…<kbd>Ctrl+N</kbd></button>
+        <button data-cmd="batch">Add batch of links…</button>
+        <button data-cmd="grabber">Grabber…</button>
+        <hr><button data-cmd="exit">Exit</button>
+      </div>
+    </div>
+    <div class="menu"><button>File</button>
+      <div class="dropdown">
+        <button data-cmd="open" data-need="complete">Open file<kbd>Enter</kbd></button>
+        <button data-cmd="folder" data-need="one">Open folder</button>
+        <button data-cmd="copy" data-need="one">Copy link</button>
+        <hr><button data-cmd="delete" data-need="one">Delete…<kbd>Del</kbd></button>
+      </div>
+    </div>
+    <div class="menu"><button>Downloads</button>
+      <div class="dropdown">
+        <button data-cmd="resume" data-need="one">Resume</button>
+        <button data-cmd="pause" data-need="one">Pause</button>
+        <button data-cmd="redownload" data-need="one">Redownload</button>
+        <hr>
+        <button data-cmd="startqueue">Start queue</button>
+        <button data-cmd="stop">Stop all</button>
+        <hr>
+        <button data-cmd="clearfinished">Remove finished from list</button>
+      </div>
+    </div>
+    <div class="menu"><button>View</button>
+      <div class="dropdown">
+        <button data-cmd="details">Show details panel<kbd id="detailsCheck">✓</kbd></button>
+        <button data-cmd="theme">Dark theme<kbd id="themeCheck"></kbd></button>
+      </div>
+    </div>
+    <div class="menu"><button>Help</button>
+      <div class="dropdown">
+        <button data-cmd="extension">Browser extension…</button>
+        <button data-cmd="about">About HyperGet</button>
+      </div>
+    </div>
+    <div class="menu"><button>Upgrade</button>
+      <div class="dropdown">
+        <button data-cmd="sites">Video site support…</button>
+        <button data-cmd="about">Check version</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="tool" data-act="add"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Add URL</button>
+    <button class="tool" data-act="resume"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>Resume</button>
+    <button class="tool" data-act="pause"><span class="ic"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></span>Pause</button>
+    <button class="tool" data-act="stop"><span class="ic"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></span>Stop all</button>
+    <button class="tool" data-act="delete"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></span>Delete</button>
+    <button class="tool" data-act="scheduler"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Scheduler</button>
+    <button class="tool" data-act="queue"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h11"/></svg></span>Queue</button>
+    <button class="tool" data-act="grabber"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>Grabber</button>
+    <button class="tool" data-act="options"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg></span>Options</button>
+    <div class="spacer"></div>
+    <div class="speed-limit menu" id="speedMenu">
+      <span>Speed limit</span>
+      <button class="select-btn" id="speedBtn"><span id="speedLabel">Unlimited</span><i class="caret"></i></button>
+      <div class="dropdown" id="speedDrop"></div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <aside class="sidebar" id="sidebar">
+      <h3>CATEGORIES</h3>
+      <button class="nav-item sel" data-filter="all">All downloads<span class="count" data-count="all">0</span></button>
+      <button class="nav-item" data-filter="cat:Compressed">Compressed<span class="count" data-count="Compressed">0</span></button>
+      <button class="nav-item" data-filter="cat:Documents">Documents<span class="count" data-count="Documents">0</span></button>
+      <button class="nav-item" data-filter="cat:Music">Music<span class="count" data-count="Music">0</span></button>
+      <button class="nav-item" data-filter="cat:Programs">Programs<span class="count" data-count="Programs">0</span></button>
+      <button class="nav-item" data-filter="cat:Video">Video<span class="count" data-count="Video">0</span></button>
+      <h3 class="second">STATUS</h3>
+      <button class="nav-item" data-filter="unfinished">Unfinished<span class="count" data-count="unfinished">0</span></button>
+      <button class="nav-item" data-filter="finished">Finished<span class="count" data-count="finished">0</span></button>
+      <button class="nav-item" data-filter="queues">Queues<span class="count" data-count="queues">0</span></button>
+      <button class="nav-item" data-filter="grabber">Grabber projects<span class="count" data-count="grabber">0</span></button>
+    </aside>
+
+    <main class="main">
+      <form class="search" id="searchForm" autocomplete="off">
+        <input type="text" id="search" placeholder="Search downloads or paste a link to add...">
+        <button type="button" class="btn-primary" data-act="add">Add URL</button>
+      </form>
+
+      <section class="card table-card">
+        <div class="grid-row thead" id="thead">
+          <div data-sort="name">File name</div>
+          <div data-sort="size">Size</div>
+          <div data-sort="progress">Progress</div>
+          <div data-sort="speed">Speed</div>
+          <div data-sort="eta" class="col-eta">Time left</div>
+          <div data-sort="added" class="col-added">Added</div>
+        </div>
+        <div class="tbody" id="tbody"></div>
+      </section>
+
+      <section class="card details" id="details"></section>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span><b id="sbActive">0</b> active</span>
+    <span>Total speed <b id="sbSpeed">0 B/s</b></span>
+    <span>Queue: <b id="sbQueue">0</b> waiting</span>
+    <span class="right" id="sbScheduler">Scheduler off</span>
+  </footer>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
