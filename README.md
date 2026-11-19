@@ -36,6 +36,13 @@ them on the Releases page. Windows needs the Microsoft Edge WebView2 runtime (al
 on Windows 10/11). The build isn't code-signed yet, so SmartScreen will warn on first run:
 choose *More info → Run anyway*.
 
+## Website
+
+`website/` is the product site (one static page plus screenshots in `website/assets/`).
+It is published to GitHub Pages by `.github/workflows/website.yml` when changes reach the
+main branch. Turn it on once under **Settings → Pages → Source: GitHub Actions**. To preview
+locally: `cd website && python -m http.server`.
+
 ## Run from source
 
 ```bash

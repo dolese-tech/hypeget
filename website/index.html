@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- page:start -->
+<title>HyperGet Downloader</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="HyperGet splits every download across up to eight connections, resumes where it stopped, and saves streaming video in the quality you pick.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one column of bands; the hero's live "segment meter" is the page's signature,
+   and the same eight-lane motif returns in the "how it works" band. */
+:root {
+  --bg: #f5f7fb;          /* page ground, blue-biased neutral */
+  --surface: #ffffff;
+  --ink: #0d1526;         /* text */
+  --muted: #56627a;
+  --line: #dde3ee;
+  --accent: #2457e6;      /* HyperGet blue */
+  --accent-ink: #ffffff;
+  --accent-soft: #e6edfd;
+  --done: #15985a;        /* segment complete */
+  --wait: #c7810d;        /* paused */
+  --track: #e3e8f2;
+  --band: #0d1526;        /* dark band (hero meter, download band) */
+  --band-ink: #eef2fa;
+  --band-muted: #93a0b8;
+  --band-line: #26324a;
+
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --step--1: 0.875rem;
+  --step-0: 1rem;
+  --step-1: 1.2rem;
+  --step-2: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  --step-3: clamp(2rem, 1.4rem + 2.6vw, 3.1rem);
+  --step-4: clamp(2.5rem, 1.6rem + 4vw, 4.4rem);
+  --radius: 14px;
+  --wrap: 1160px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0f1b; --surface: #111a2b; --ink: #e8edf7; --muted: #9aa7bf; --line: #223049;
+    --accent: #5b8bff; --accent-ink: #07101f; --accent-soft: #16244a; --done: #2fbf78; --wait: #e2a23a;
+    --track: #1f2a40; --band: #050913; --band-ink: #eef2fa; --band-muted: #8b98b2; --band-line: #1c2740;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0f1b; --surface: #111a2b; --ink: #e8edf7; --muted: #9aa7bf; --line: #223049;
+  --accent: #5b8bff; --accent-ink: #07101f; --accent-soft: #16244a; --done: #2fbf78; --wait: #e2a23a;
+  --track: #1f2a40; --band: #050913; --band-ink: #eef2fa; --band-muted: #8b98b2; --band-line: #1c2740;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--step-0)/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--accent); }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 600 0.78rem/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- nav ---------- */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; gap: 28px; height: 62px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 800 1.1rem var(--display); color: var(--ink); text-decoration: none; letter-spacing: -0.01em; }
+.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+.mark svg { width: 16px; height: 16px; }
+.nav nav { display: flex; gap: 22px; margin-left: auto; }
+.nav nav a { color: var(--muted); text-decoration: none; font-size: 0.93rem; font-weight: 500; }
+.nav nav a:hover { color: var(--ink); }
+.btn { display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 20px; border-radius: 10px; font: 600 0.97rem var(--body); text-decoration: none; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { border-color: var(--line); color: var(--ink); background: var(--surface); }
+.btn-ghost:hover { border-color: var(--muted); }
+.btn-sm { height: 36px; padding: 0 14px; font-size: 0.9rem; }
+
+/* ---------- hero ---------- */
+.hero { padding-block: 64px 40px; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.hero h1 { font-size: var(--step-4); }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.lede { font-size: var(--step-1); color: var(--muted); margin-top: 20px; max-width: 34em; line-height: 1.55; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.fine { margin-top: 14px; font-size: var(--step--1); color: var(--muted); }
+
+/* segment meter: the file split into eight byte ranges */
+.meter { background: var(--band); color: var(--band-ink); border-radius: 18px; padding: 22px 22px 18px; box-shadow: 0 30px 60px -30px rgba(13, 21, 38, .55); min-width: 0; }
+.meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.meter-name { font-weight: 600; font-size: 1.02rem; min-width: 0; overflow-wrap: anywhere; }
+.meter-host { color: var(--band-muted); font-size: 0.82rem; }
+.meter-pct { font: 500 2.3rem/1 var(--mono); font-variant-numeric: tabular-nums; }
+.file { position: relative; height: 14px; border-radius: 7px; background: var(--band-line); margin: 16px 0 6px; overflow: hidden; display: flex; }
+.file span { height: 100%; flex: 1; position: relative; border-right: 2px solid var(--band); }
+.file span:last-child { border-right: 0; }
+.file span i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.file span.done i { background: var(--done); }
+.ruler { display: flex; justify-content: space-between; font: 500 0.72rem var(--mono); color: var(--band-muted); }
+.lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 22px; margin-top: 18px; }
+.lane { display: grid; grid-template-columns: 26px 1fr 40px; align-items: center; gap: 8px; font: 500 0.78rem var(--mono); color: var(--band-muted); }
+.lane .bar { height: 6px; border-radius: 3px; background: var(--band-line); overflow: hidden; }
+.lane .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.lane.done .bar i { background: var(--done); }
+.lane b { text-align: right; font-weight: 500; color: var(--band-ink); }
+.meter-foot { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--band-line); font-size: 0.85rem; color: var(--band-muted); }
+.meter-foot b { color: var(--band-ink); font: 500 0.9rem var(--mono); }
+
+/* ---------- screenshot ---------- */
+.shot { padding-block: 28px 20px; }
+.frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 40px 80px -40px rgba(13, 21, 38, .45); background: var(--surface); }
+.frame .shot-dark { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .frame .shot-light { display: none; } :root:not([data-theme="light"]) .frame .shot-dark { display: block; } }
+:root[data-theme="dark"] .frame .shot-light { display: none; }
+:root[data-theme="dark"] .frame .shot-dark { display: block; }
+.caption { text-align: center; color: var(--muted); font-size: var(--step--1); margin-top: 14px; }
+
+/* ---------- sections ---------- */
+section.band { padding-block: 88px; }
+.head { max-width: 40em; margin-bottom: 44px; }
+.head h2 { font-size: var(--step-3); margin-top: 12px; }
+.head p { color: var(--muted); font-size: var(--step-1); margin-top: 16px; line-height: 1.55; }
+
+/* how it works: a real sequence, so it is numbered */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; counter-reset: step; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; min-width: 0; }
+.step-n { font: 500 0.8rem var(--mono); color: var(--muted); }
+.step h3 { font-size: var(--step-1); margin: 10px 0 8px; letter-spacing: -0.01em; }
+.step p { color: var(--muted); font-size: 0.95rem; }
+.mini { margin-top: 18px; display: grid; gap: 5px; }
+.mini .row { display: flex; gap: 3px; height: 10px; }
+.mini .row span { flex: 1; border-radius: 2px; background: var(--track); }
+.mini .row span.a { background: var(--accent); }
+.mini .row span.d { background: var(--done); }
+.mini .row span.n { background: color-mix(in srgb, var(--accent) 45%, var(--track)); }
+.mini .lbl { font: 500 0.72rem var(--mono); color: var(--muted); margin-top: 4px; }
+
+/* features */
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 36px; }
+.feat { min-width: 0; }
+.feat .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 14px; }
+.feat .ic svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.feat h3 { font-size: 1.12rem; letter-spacing: -0.01em; margin-bottom: 6px; font-weight: 600; font-family: var(--body); }
+.feat p { color: var(--muted); font-size: 0.95rem; }
+
+/* split media sections */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
+.split.flip > :first-child { order: 2; }
+.split h2 { font-size: var(--step-3); margin-top: 12px; }
+.split .copy > p { color: var(--muted); font-size: var(--step-1); margin-top: 16px; line-height: 1.55; }
+.ticks { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; }
+.ticks li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; color: var(--ink); }
+.ticks li svg { width: 20px; height: 20px; color: var(--done); margin-top: 2px; }
+.ticks li span { color: var(--muted); }
+.ticks li b { font-weight: 600; color: var(--ink); }
+.pic { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 60px -36px rgba(13, 21, 38, .5); min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.chip { font: 500 0.8rem var(--mono); padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); }
+.note { margin-top: 22px; font-size: 0.9rem; color: var(--muted); border-left: 3px solid var(--wait); padding: 4px 0 4px 14px; }
+
+/* download band */
+.dl { background: var(--band); color: var(--band-ink); }
+.dl .head p { color: var(--band-muted); }
+.dl .eyebrow { color: color-mix(in srgb, var(--accent) 70%, #fff); }
+.options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.opt { border: 1px solid var(--band-line); border-radius: var(--radius); padding: 28px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.opt.main { border-color: color-mix(in srgb, var(--accent) 60%, var(--band-line)); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.opt h3 { font-size: var(--step-2); }
+.opt .file-name { font: 500 0.85rem var(--mono); color: var(--band-muted); overflow-wrap: anywhere; }
+.opt p { color: var(--band-muted); }
+.opt .btn { align-self: flex-start; margin-top: auto; }
+.opt .btn-ghost { background: transparent; color: var(--band-ink); border-color: var(--band-line); }
+.reqs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--band-line); }
+.reqs dt { font: 600 0.75rem var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--band-muted); }
+.reqs dd { margin: 6px 0 0; font-size: 0.95rem; }
+
+/* faq */
+.faq { max-width: 820px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; list-style: none; padding: 20px 36px 20px 0; font-weight: 600; font-size: 1.05rem; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 4px; top: 16px; font: 400 1.5rem/1 var(--body); color: var(--muted); }
+.faq details[open] summary::after { content: "–"; }
+.faq details p { color: var(--muted); padding-bottom: 20px; max-width: 62ch; }
+
+footer { border-top: 1px solid var(--line); padding-block: 32px; color: var(--muted); font-size: 0.9rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; }
+footer .brand { font-size: 1rem; }
+footer .links { display: flex; gap: 20px; margin-left: auto; flex-wrap: wrap; }
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--ink); }
+
+@media (max-width: 920px) {
+  .hero .wrap, .split { grid-template-columns: 1fr; gap: 40px; }
+  .split.flip > :first-child { order: 0; }
+  .steps, .features { grid-template-columns: 1fr 1fr; }
+  .nav nav { display: none; }
+  .nav .btn { margin-left: auto; }
+}
+@media (max-width: 620px) {
+  .hero { padding-block: 40px 24px; }
+  section.band { padding-block: 64px; }
+  .steps, .features, .options, .reqs { grid-template-columns: 1fr; }
+  .lanes { grid-template-columns: 1fr; }
+  .meter-pct { font-size: 1.9rem; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></span>HyperGet</a>
+    <nav aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#video">Video</a>
+      <a href="#extension">Extension</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="#get">Download</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <div class="eyebrow">Download manager for Windows</div>
+        <h1 style="margin-top:14px">Eight connections.<br>One file. <em>Done sooner.</em></h1>
+        <p class="lede">HyperGet splits every download into byte ranges and fetches them side by side. It picks up where it stopped after a dropped connection or a restart, and saves streaming video in the quality you choose.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#get"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>Download for Windows</a>
+          <a class="btn btn-ghost" href="#extension">Browser extension</a>
+        </div>
+        <p class="fine">Version 0.1.0 · Windows 10 and 11, 64-bit · Installer or portable</p>
+      </div>
+
+      <div class="meter" aria-label="Example: a 5.9 GB file downloading over eight connections">
+        <div class="meter-head">
+          <div style="min-width:0">
+            <div class="meter-name">ubuntu-24.04-desktop.iso</div>
+            <div class="meter-host">releases.example.org · 5.9 GB</div>
+          </div>
+          <div class="meter-pct" id="pct">62%</div>
+        </div>
+        <div class="file" id="file"></div>
+        <div class="ruler"><span>0</span><span>1.5 GB</span><span>3.0 GB</span><span>4.4 GB</span><span>5.9 GB</span></div>
+        <div class="lanes" id="lanes"></div>
+        <div class="meter-foot">
+          <span>Speed <b id="spd">11.3 MB/s</b></span>
+          <span>Left <b id="eta">6m 12s</b></span>
+          <span>Connections <b id="conns">8 active</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="shot">
+    <div class="wrap">
+      <div class="frame">
+        <img class="shot-light" src="assets/app-light.webp" width="2560" height="1600" alt="HyperGet main window: downloads list with progress, speed and time left, and per-connection progress bars for the selected file">
+        <img class="shot-dark" src="assets/app-dark.webp" width="2560" height="1600" alt="HyperGet main window in dark theme" loading="lazy">
+      </div>
+      <p class="caption">The main window: categories, live speed per download, and every connection of the selected file.</p>
+    </div>
+  </section>
+
+  <section class="band" id="how">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">How it works</div>
+        <h2>Why a split download finishes first</h2>
+        <p>Many servers cap the speed of each single connection. HyperGet opens several to the same file and keeps every one of them busy until the last byte.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-n">Step 1</div>
+          <h3>Ask before fetching</h3>
+          <p>A one-byte request reveals the file's real name, its exact size, and whether the server accepts byte ranges.</p>
+          <div class="mini" aria-hidden="true"><div class="row"><span class="a" style="flex:.04"></span><span></span></div><div class="lbl">bytes=0-0 → 206, 6,335,397,888 bytes</div></div>
+        </div>
+        <div class="step">
+          <div class="step-n">Step 2</div>
+          <h3>Split into ranges</h3>
+          <p>The file is divided into up to eight ranges, one per connection, written straight into place on disk.</p>
+          <div class="mini" aria-hidden="true"><div class="row"><span class="a"></span><span class="a"></span><span class="a"></span><span class="a"></span><span class="a"></span><span class="a"></span><span class="a"></span><span class="a"></span></div><div class="lbl">8 × 755 MB</div></div>
+        </div>
+        <div class="step">
+          <div class="step-n">Step 3</div>
+          <h3>Rebalance at the end</h3>
+          <p>When a connection finishes early it takes half of the biggest range still left, so no connection sits idle at the end.</p>
+          <div class="mini" aria-hidden="true"><div class="row"><span class="d"></span><span class="d"></span><span class="a"></span><span class="n"></span><span class="d"></span><span class="a"></span><span class="d"></span><span class="d"></span></div><div class="lbl">#2 done → takes half of #3</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="features" style="padding-top:24px">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Features</div>
+        <h2>Everything a long download needs</h2>
+      </div>
+      <div class="features">
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+          <h3>Resume after anything</h3>
+          <p>Wi-Fi drops, the laptop sleeps, or you close the app: progress for each range is saved, and the download continues from the same byte.</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 14a8 8 0 0 1 16 0"/><path d="M12 14l4-4"/><path d="M4 18h16"/></svg></div>
+          <h3>Speed limit</h3>
+          <p>Cap HyperGet at 512 KB/s, 2 MB/s or any value so video calls and games keep their bandwidth. The limit is shared across all downloads.</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Queue and scheduler</h3>
+          <p>Choose how many files run at once, and start the queue at 02:00 and stop it at 07:00 every day.</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
+          <h3>Grabber</h3>
+          <p>Point it at a web page and it lists every linked file (archives, PDFs, installers, audio, video) so you can tick the ones you want.</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <h3>Sorted automatically</h3>
+          <p>Files land in Compressed, Documents, Music, Programs or Video inside your Downloads folder, named the way the server named them.</p>
+        </div>
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 1 0 9 9 9 9 0 1 1-9-9z"/></svg></div>
+          <h3>Light and dark</h3>
+          <p>A clean window with a details panel for the selected file, keyboard shortcuts, and a dark theme for late-night queues.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="video" style="padding-top:24px">
+    <div class="wrap split">
+      <div class="copy">
+        <div class="eyebrow">Streaming video</div>
+        <h2>Pick the quality before you save</h2>
+        <p>Paste a stream or video page link and HyperGet lists every quality it offers, with the resolution and an estimated size, before a single byte is saved.</p>
+        <ul class="ticks">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><div><b>HLS streams.</b> <span>Master playlists, separate audio tracks and standard AES-128 encrypted segments.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><div><b>Video sites.</b> <span>YouTube and many other sites through the bundled yt-dlp extractor, from 144p up to the highest quality the site offers, or audio only.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><div><b>One MP4 at the end.</b> <span>Video and audio are merged with the bundled FFmpeg, ready for any player.</span></div></li>
+        </ul>
+        <p class="note">Save only what you have the right to keep. DRM-protected services such as Netflix or Spotify are not supported.</p>
+      </div>
+      <div class="pic"><img src="assets/quality-picker.webp" width="1284" height="970" alt="Add URL dialog listing 1080p, 720p, 480p and 360p for an HLS stream with estimated sizes, 720p selected" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="band" id="extension" style="padding-top:24px">
+    <div class="wrap split flip">
+      <div class="copy">
+        <div class="eyebrow">Browser extension</div>
+        <h2>A download button on every video</h2>
+        <p>Hover a video in Chrome or Edge and a <b>Download this video</b> button appears. Choose a quality and HyperGet takes it from there.</p>
+        <ul class="ticks">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><div><b>Detects media on the page.</b> <span>The toolbar icon counts the streams and files each tab loads.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><div><b>Takes over normal downloads.</b> <span>Files over 1 MB go to HyperGet with your sign-in cookies, so links that need a login still work. If the app isn't open, the browser downloads as usual.</span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><div><b>Right-click any link.</b> <span>"Download with HyperGet" on links, images, audio and video.</span></div></li>
+        </ul>
+        <div class="chips"><span class="chip">Chrome</span><span class="chip">Edge</span><span class="chip">Talks only to 127.0.0.1</span></div>
+      </div>
+      <div class="pic"><img src="assets/extension.webp" width="1660" height="910" alt="A video player in the browser with a blue Download this video button and a menu offering 1080p, 720p and 360p" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="band dl" id="get">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Download</div>
+        <h2>Get HyperGet 0.1.0</h2>
+        <p>Both versions include FFmpeg, yt-dlp and the browser extension folder. Nothing else to install.</p>
+      </div>
+      <div class="options">
+        <div class="opt main">
+          <h3>Installer</h3>
+          <div class="file-name">HyperGet-Setup-0.1.0.exe</div>
+          <p>Start menu and desktop shortcuts, an uninstaller, and an option to start with Windows so the extension always finds the app.</p>
+          <a class="btn btn-primary" href="https://github.com/dolese/hypeget/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>Download installer</a>
+        </div>
+        <div class="opt">
+          <h3>Portable</h3>
+          <div class="file-name">HyperGet-portable-0.1.0.zip</div>
+          <p>Unzip anywhere, including a USB drive, and run HyperGet.exe. Settings are kept in your user folder.</p>
+          <a class="btn btn-ghost" href="https://github.com/dolese/hypeget/releases/latest">Download zip</a>
+        </div>
+      </div>
+      <dl class="reqs">
+        <div><dt>System</dt><dd>Windows 10 or 11, 64-bit</dd></div>
+        <div><dt>Needs</dt><dd>Microsoft Edge WebView2, already part of Windows 10 and 11</dd></div>
+        <div><dt>First run</dt><dd>If SmartScreen shows "Windows protected your PC", choose More info, then Run anyway</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="wrap">
+      <div class="head" style="margin-bottom:20px">
+        <div class="eyebrow">Questions</div>
+        <h2>Before you install</h2>
+      </div>
+      <div class="faq">
+        <details><summary>Is every download really faster?</summary><p>When the server limits each connection, which many do, splitting the file can multiply your speed up to your line's limit. If your connection is already the bottleneck, HyperGet won't beat it, but you still get resume, the queue and the scheduler.</p></details>
+        <details><summary>What happens if the server doesn't support resuming?</summary><p>HyperGet notices during its first request and downloads over a single connection instead. The details panel shows "Resume: Not supported by server" so you know an interrupted download will restart from zero.</p></details>
+        <details><summary>Can it download from YouTube?</summary><p>Yes, through the bundled yt-dlp extractor, with a choice of quality. Check each site's terms, and only download videos you own or have permission to save.</p></details>
+        <details><summary>Why won't it save Netflix, Disney+ or Spotify?</summary><p>Those services encrypt their streams with DRM. HyperGet doesn't break DRM, and it tells you when a stream is protected instead of saving an unplayable file.</p></details>
+        <details><summary>Does the extension send my browsing anywhere?</summary><p>No. It only talks to HyperGet on your own computer at 127.0.0.1. The app refuses requests from ordinary websites, so a web page can't start downloads behind your back.</p></details>
+        <details><summary>Is there a Mac or Linux version?</summary><p>Not as an installer yet. HyperGet runs from source on macOS and Linux with Python 3.10 or newer; the README on GitHub has the steps.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></span>HyperGet</a>
+    <span>Version 0.1.0</span>
+    <div class="links">
+      <a href="#get">Download</a>
+      <a href="https://github.com/dolese/hypeget">Source</a>
+      <a href="https://github.com/dolese/hypeget/releases">Release notes</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Hero segment meter: eight ranges of a 5.9 GB file filling at their own pace.
+(() => {
+  const N = 8, TOTAL = 5.9 * 1024; // MB
+  const start = [0.95, 0.62, 0.80, 0.50, 0.72, 0.40, 0.88, 0.55];
+  const rate = [1.0, 0.86, 0.93, 0.78, 0.9, 0.7, 0.97, 0.82];
+  const file = document.getElementById("file"), lanes = document.getElementById("lanes");
+  const fileI = [], laneI = [], laneB = [], laneEl = [];
+  for (let i = 0; i < N; i++) {
+    const s = document.createElement("span"); const fi = document.createElement("i");
+    s.appendChild(fi); file.appendChild(s); fileI.push(fi);
+    const l = document.createElement("div"); l.className = "lane";
+    l.innerHTML = `<span>#${i + 1}</span><div class="bar"><i></i></div><b></b>`;
+    lanes.appendChild(l); laneEl.push(l); laneI.push(l.querySelector("i")); laneB.push(l.querySelector("b"));
+  }
+  const pctEl = document.getElementById("pct"), spdEl = document.getElementById("spd"),
+        etaEl = document.getElementById("eta"), connEl = document.getElementById("conns");
+  let p = start.slice();
+  function draw(speed) {
+    let sum = 0, active = 0;
+    for (let i = 0; i < N; i++) {
+      const v = Math.min(1, p[i]); sum += v;
+      const done = v >= 1; if (!done) active++;
+      fileI[i].style.width = laneI[i].style.width = (v * 100).toFixed(1) + "%";
+      file.children[i].classList.toggle("done", done);
+      laneEl[i].classList.toggle("done", done);
+      laneB[i].textContent = Math.floor(v * 100) + "%";
+    }
+    const total = sum / N;
+    pctEl.textContent = Math.floor(total * 100) + "%";
+    spdEl.textContent = speed.toFixed(1) + " MB/s";
+    const left = (1 - total) * TOTAL / Math.max(speed, 0.1);
+    const m = Math.floor(left / 60), s = Math.round(left % 60);
+    etaEl.textContent = total >= 1 ? "Complete" : (m ? `${m}m ${String(s).padStart(2, "0")}s` : `${s}s`);
+    connEl.textContent = total >= 1 ? "finished" : `${active} active`;
+    pctEl.style.color = total >= 1 ? "var(--done)" : "";
+  }
+  draw(11.3);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let last = performance.now(), hold = 0;
+  function tick(t) {
+    const dt = Math.min(0.1, (t - last) / 1000); last = t;
+    if (p.every((v) => v >= 1)) {
+      hold += dt;
+      if (hold > 2.2) { p = start.map((v) => v - 0.4); hold = 0; }
+      draw(0); requestAnimationFrame(tick); return;
+    }
+    // ~12 MB/s demo pace; finished lanes "steal" work from the slowest one
+    const speed = 10.6 + Math.sin(t / 900) * 1.2;
+    for (let i = 0; i < N; i++) {
+      if (p[i] < 1) p[i] += dt * 0.045 * rate[i] * (1 + 0.25 * Math.sin(t / 400 + i));
+    }
+    draw(speed);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+<!-- page:end -->
+</body>
+</html>
