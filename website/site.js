@@ -55,7 +55,7 @@
       });
       if (notice) notice.hidden = false;
     };
-    fetch("https://api.github.com/repos/dolese/hypeget/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
+    fetch("https://api.github.com/repos/dolese-tech/hypeget/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
       .then((r) => {
         if (r.status === 404) return null;            // no release published yet
         if (!r.ok) throw new Error(String(r.status));  // rate limit etc.: keep the fallback links
