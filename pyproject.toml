@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Optional site extractor (YouTube and ~1000 other sites) with quality selection.
-sites = ["yt-dlp>=2024.1.1"]
+sites = ["yt-dlp[default]>=2025.11.12"]   # [default] adds yt-dlp-ejs for YouTube HD/4K
 dev = ["pytest>=8", "pytest-timeout>=2"]
 
 [project.scripts]

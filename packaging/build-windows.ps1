@@ -15,7 +15,7 @@ Write-Host "== Building HyperGet $version" -ForegroundColor Cyan
 
 Write-Host "== Installing build tools"
 python -m pip install --upgrade pip
-python -m pip install . yt-dlp pyinstaller pytest pytest-timeout
+python -m pip install . "yt-dlp[default]" pyinstaller pytest pytest-timeout
 
 Write-Host "== Running tests"
 python -m pytest -v --timeout=120
@@ -30,7 +30,7 @@ if (-not (Test-Path hypeget\store_ids.json)) {
 Write-Host "== HyperGet.exe"
 pyinstaller --noconfirm --clean --windowed --name HyperGet --icon packaging/hypeget.ico `
   --add-data "hypeget/ui;hypeget/ui" --add-data "hypeget/store_ids.json;hypeget" `
-  --collect-submodules yt_dlp --collect-submodules pystray --collect-all webview packaging/launcher.py
+  --collect-submodules yt_dlp --collect-all yt_dlp_ejs --collect-submodules pystray --collect-all webview packaging/launcher.py
 
 Write-Host "== HyperGet-NativeHost.exe (browser helper)"
 pyinstaller --noconfirm --onefile --console --name HyperGet-NativeHost --icon packaging/hypeget.ico `
@@ -44,6 +44,11 @@ $ff = Join-Path $env:TEMP "hyperget-ffmpeg"
 Remove-Item -Recurse -Force $ff -ErrorAction SilentlyContinue
 Expand-Archive $zip $ff
 Copy-Item (Get-ChildItem $ff -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName dist\HyperGet\ffmpeg.exe
+
+Write-Host "== Deno (YouTube HD/4K)"
+$dz = Join-Path $env:TEMP "hyperget-deno.zip"
+Invoke-WebRequest "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" -OutFile $dz
+Expand-Archive $dz dist\HyperGet -Force
 
 Write-Host "== Browser extension"
 python tools/build_extension.py
@@ -59,12 +64,12 @@ for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
   Start-Sleep 1
   try {
     $r = Invoke-RestMethod http://127.0.0.1:52999/api/state -Headers @{ "X-HyperGet" = "1" }
-    if ($r.features.ffmpeg -and $r.features.sites) { $ok = $true }
+    if ($r.features.ffmpeg -and $r.features.sites -and $r.features.youtube_hd) { $ok = $true }
   } catch {}
 }
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\HYPEGET_HOME
-if (-not $ok) { throw "HyperGet.exe did not start correctly (UI, FFmpeg or yt-dlp missing)" }
+if (-not $ok) { throw "HyperGet.exe did not start correctly (UI, FFmpeg, yt-dlp or YouTube HD components missing)" }
 
 Write-Host "== Portable zip"
 Compress-Archive -Path dist\HyperGet -DestinationPath "dist\HyperGet-portable-$version.zip"

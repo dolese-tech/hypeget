@@ -206,7 +206,8 @@ class Manager:
             "queue_running": self.queue_running,
             "scheduler": self.scheduler.describe(s.scheduler_enabled, s.scheduler_start, s.scheduler_stop),
             "settings": self.config.to_dict(),
-            "features": {"sites": sites.available(), "ffmpeg": hls.ffmpeg_path() is not None},
+            "features": {"sites": sites.available(), "ffmpeg": hls.ffmpeg_path() is not None,
+                         "youtube_hd": sites.available() and sites.youtube_hd_ready()},
         }
 
     # ------------------------------------------------------------ internals

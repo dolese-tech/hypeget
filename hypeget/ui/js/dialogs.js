@@ -79,7 +79,7 @@ export function addUrlDialog(prefill = "", onDone) {
           item.kind = info.kind;
           item.title = info.kind === "http" ? "" : info.title;
           item.quality = chosen.quality || "";
-          item.options = { variant_url: chosen.variant_url, audio_url: chosen.audio_url, format: chosen.format };
+          item.options = { variant_url: chosen.variant_url, audio_url: chosen.audio_url, format: chosen.format, container: chosen.container };
         }
         if (name && name !== (info?.suggested || "")) item.filename = name;
         await api.add(item);
@@ -113,7 +113,7 @@ export function addUrlDialog(prefill = "", onDone) {
   function suggestedName() {
     if (!info) return "";
     if (info.kind === "http") return info.filename;
-    const ext = chosen?.quality === "audio" ? ".m4a" : ".mp4";
+    const ext = "." + (chosen?.container || (chosen?.quality === "audio" ? "m4a" : "mp4"));
     const q = chosen?.quality && chosen.quality !== "audio" ? `_${chosen.quality}` : "";
     return `${info.title}${q}${ext}`;
   }
@@ -124,6 +124,7 @@ export function addUrlDialog(prefill = "", onDone) {
     let html = "";
     if (isVideo) {
       const dur = info.duration ? ` · ${Math.floor(info.duration / 60)}:${String(Math.round(info.duration % 60)).padStart(2, "0")}` : "";
+      if (info.note) html += `<div class="msg info">${esc(info.note)}</div>`;
       html += `<div class="field"><label>Quality <span style="color:var(--text-3);font-weight:400">— ${esc(info.title)}${dur}</span></label>
         <div class="qualities">${opts.map((o, i) => `
           <label class="quality ${o === chosen ? "sel" : ""}" data-i="${i}">
@@ -249,6 +250,7 @@ export function optionsDialog(state) {
       <label class="check"><input type="checkbox" id="o-notify" ${s.notify_complete ? "checked" : ""}> Show a notification when a download finishes or fails</label>
       <div class="msg info">
         Video sites (YouTube etc.): <b>${f.sites ? "enabled" : "not installed"}</b>${f.sites ? "" : " — run <code>pip install yt-dlp</code>"}<br>
+        YouTube HD and 4K: <b>${f.youtube_hd ? "ready" : "not available"}</b>${f.youtube_hd ? "" : " — needs Deno and yt-dlp-ejs (included in the Windows installer)"}<br>
         FFmpeg (merging HLS audio/video into MP4): <b>${f.ffmpeg ? "found" : "not found"}</b>
       </div>`,
     buttons: [{ label: "Cancel" }, { label: "Save", cls: "btn-primary", primary: true, onClick: async (ov) => {

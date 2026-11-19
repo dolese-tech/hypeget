@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
                     dl = m.add(it["url"], kind=it.get("kind") or None, filename=it.get("filename") or None,
                                save_dir=it.get("save_dir") or None, quality=it.get("quality") or "",
                                options={k: v for k, v in (it.get("options") or {}).items()
-                                        if k in ("variant_url", "audio_url", "format")},
+                                        if k in ("variant_url", "audio_url", "format", "container")},
                                headers=it.get("headers"), title=it.get("title") or "",
                                page_url=it.get("page_url") or "", start=it.get("start", True))
                     created.append(dl.to_view())

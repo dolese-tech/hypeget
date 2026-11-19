@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install . yt-dlp pyinstaller pytest pytest-timeout
+          pip install . "yt-dlp[default]" pyinstaller pytest pytest-timeout
 
       - name: Run tests
         run: python -m pytest -v --timeout=120
@@ -58,7 +58,7 @@ jobs:
           --icon packaging/hypeget.ico
           --add-data "hypeget/ui;hypeget/ui"
           --add-data "hypeget/store_ids.json;hypeget"
-          --collect-submodules yt_dlp --collect-submodules pystray
+          --collect-submodules yt_dlp --collect-all yt_dlp_ejs --collect-submodules pystray
           --collect-all webview
           packaging/launcher.py
 
@@ -76,6 +76,10 @@ jobs:
           Expand-Archive $zip "$env:RUNNER_TEMP\ffmpeg"
           $exe = Get-ChildItem "$env:RUNNER_TEMP\ffmpeg" -Recurse -Filter ffmpeg.exe | Select-Object -First 1
           Copy-Item $exe.FullName dist\HyperGet\ffmpeg.exe
+          # Deno: YouTube only serves HD/4K to clients that can run its player JavaScript
+          $dz = "$env:RUNNER_TEMP\deno.zip"
+          Invoke-WebRequest "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" -OutFile $dz
+          Expand-Archive $dz dist\HyperGet -Force
           python tools/build_extension.py
           $full = Get-ChildItem dist\extension\*-full.zip | Select-Object -First 1
           Expand-Archive $full.FullName dist\HyperGet\extension
@@ -92,7 +96,7 @@ jobs:
             try {
               $r = Invoke-RestMethod http://127.0.0.1:52999/api/state -Headers @{ "X-HyperGet" = "1" }
               $ui = Invoke-WebRequest http://127.0.0.1:52999/ -UseBasicParsing
-              if ($ui.Content -match "HyperGet Downloader" -and $r.features.ffmpeg -and $r.features.sites) { $ok = $true }
+              if ($ui.Content -match "HyperGet Downloader" -and $r.features.ffmpeg -and $r.features.sites -and $r.features.youtube_hd) { $ok = $true }
             } catch {}
           }
           # The browser helper: talk to it exactly like Chrome does.
@@ -109,8 +113,8 @@ jobs:
           '@ | python -
           if ($LASTEXITCODE -ne 0) { $ok = $false; Write-Host "native host check failed" }
           Stop-Process -Id $p.Id -Force
-          if (-not $ok) { throw "HyperGet.exe did not start correctly (UI, ffmpeg, yt-dlp or browser helper missing)" }
-          Write-Host "HyperGet.exe started, served the UI, found ffmpeg and yt-dlp; the browser helper answered"
+          if (-not $ok) { throw "HyperGet.exe did not start correctly (UI, ffmpeg, yt-dlp, YouTube HD components or browser helper missing)" }
+          Write-Host "HyperGet.exe started, served the UI, found ffmpeg, yt-dlp and YouTube HD support; the browser helper answered"
           # Registration writes the manifest + HKCU keys for each browser
           Start-Process dist\HyperGet\HyperGet.exe -ArgumentList "--register" -Wait
           Get-Item "HKCU:\Software\Google\Chrome\NativeMessagingHosts\tech.dolese.hyperget" | Out-Host

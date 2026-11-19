@@ -16,13 +16,13 @@
         cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.28); opacity: .94; }
       .btn:hover { opacity: 1; background: #1d4ed8; }
       .btn svg { width: 15px; height: 15px; }
-      .menu { position: fixed; display: none; min-width: 250px; max-width: 340px; background: #fff; color: #0f172a;
+      .menu { position: fixed; display: none; min-width: 300px; max-width: 360px; background: #fff; color: #0f172a;
         border-radius: 10px; box-shadow: 0 12px 34px rgba(15,23,42,.3); padding: 6px; font-size: 13px; }
       .menu .head { padding: 7px 9px 8px; font-size: 11.5px; color: #64748b; border-bottom: 1px solid #e2e8f0; margin-bottom: 4px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .menu .head b { color: #0f172a; font-weight: 600; font-size: 12.5px; display: block; margin-bottom: 2px;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .opt { display: grid; grid-template-columns: 64px 1fr auto; gap: 8px; align-items: center; width: 100%; border: 0;
+      .opt { display: grid; grid-template-columns: 104px 1fr auto; gap: 8px; align-items: center; width: 100%; border: 0;
         background: none; padding: 8px 9px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 13px; color: inherit; }
       .opt:hover { background: #eff6ff; }
       .opt .q { font-weight: 600; } .opt .d { color: #64748b; font-size: 11.5px; } .opt .s { color: #334155; font-size: 12px; }

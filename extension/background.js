@@ -212,7 +212,7 @@ async function sendDownload(source, info, option) {
   return app("/api/downloads", {
     url: source.url, kind: info.kind, headers: source.headers, page_url: source.page_url || "",
     title: info.kind === "http" ? "" : info.title, quality: option.quality || "",
-    options: { variant_url: option.variant_url, audio_url: option.audio_url, format: option.format },
+    options: { variant_url: option.variant_url, audio_url: option.audio_url, format: option.format, container: option.container },
   });
 }
 

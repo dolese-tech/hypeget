@@ -253,7 +253,7 @@ input[type="text"], input[type="url"], input[type="number"], input[type="time"],
 
 .qualities { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; max-height: 230px; overflow: auto; }
 .quality {
-  display: grid; grid-template-columns: 18px 76px 1fr auto; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: 18px 124px 1fr auto; align-items: center; gap: 10px;
   padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer;
 }
 .quality:hover { background: var(--bg-hover); }
