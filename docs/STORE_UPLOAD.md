@@ -52,11 +52,18 @@ In GitHub: **Settings → Secrets and variables → Actions → Variables → Ne
 | `HYPERGET_CHROME_EXTENSION_ID` | the Chrome item ID |
 | `HYPERGET_EDGE_EXTENSION_ID` | the Edge product ID |
 
-The next Windows build adds the registry entries
-(`HKCU\Software\Google\Chrome\Extensions\<id>` and
-`HKCU\Software\Microsoft\Edge\Extensions\<id>`, see `packaging/installer.iss`), so the
-browsers offer the extension after installing HyperGet. Uninstalling HyperGet
-removes the entries.
+The next Windows build uses them twice:
+
+- **Install prompt**: registry entries (`HKCU\Software\Google\Chrome\Extensions\<id>`
+  and `HKCU\Software\Microsoft\Edge\Extensions\<id>`, see `packaging/installer.iss`) so
+  the browsers offer the extension after installing HyperGet.
+- **Native messaging**: the IDs are written to `hypeget/store_ids.json` inside the app,
+  so HyperGet's browser helper (`com.dolese.hyperget`) accepts the store versions.
+  Without this step the store extension shows "Not installed" even with HyperGet
+  installed. The unpacked extension that ships with HyperGet always works: its ID is
+  pinned by the `key` in `extension/manifest.json`.
+
+Uninstalling HyperGet removes the entries and the helper registration.
 
 ## 4. Point the website at the stores
 
@@ -80,6 +87,14 @@ download page shows **Add to Chrome / Add to Edge** instead of the manual steps.
 The Chrome Web Store doesn't accept extensions that download YouTube videos, so the
 store build hides the in-page button there (`extension/config.js`). The app itself
 still downloads YouTube links pasted into it.
+
+## The extension signing key
+
+`hyperget-extension-key.pem` (given to you separately, **not** in the repo) is the
+private half of the `key` in `extension/manifest.json`. It fixes the unpacked
+extension's ID (`oeclpagllkokmfmdpapcaeljjcbndgao`). Keep it safe, for example in a
+password manager. It's needed only to package the extension as a signed `.crx` outside
+the stores. Never commit it: anyone with it could make an extension with the same ID.
 
 ## Updating later
 

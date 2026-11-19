@@ -45,14 +45,28 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF#refs/tags/v}"; else v="$(python -c 'import hypeget;print(hypeget.__version__)')"; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
+      - name: Store extension IDs for the browser helper
+        shell: pwsh
+        run: |
+          # Lets the native messaging helper accept the store versions of the extension too.
+          @{ chrome = "${{ vars.HYPERGET_CHROME_EXTENSION_ID }}"; edge = "${{ vars.HYPERGET_EDGE_EXTENSION_ID }}" } |
+            ConvertTo-Json | Set-Content -Encoding utf8NoBOM hypeget\store_ids.json
+
       - name: Build HyperGet.exe
         run: >
           pyinstaller --noconfirm --clean --windowed --name HyperGet
           --icon packaging/hypeget.ico
           --add-data "hypeget/ui;hypeget/ui"
+          --add-data "hypeget/store_ids.json;hypeget"
           --collect-submodules yt_dlp
           --collect-all webview
           packaging/launcher.py
+
+      - name: Build HyperGet-NativeHost.exe (browser helper)
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --onefile --console --name HyperGet-NativeHost --icon packaging/hypeget.ico --distpath build\host packaging/native_host_launcher.py
+          Copy-Item build\host\HyperGet-NativeHost.exe dist\HyperGet\
 
       - name: Bundle FFmpeg and the browser extension
         shell: pwsh
@@ -81,9 +95,25 @@ jobs:
               if ($ui.Content -match "HyperGet Downloader" -and $r.features.ffmpeg -and $r.features.sites) { $ok = $true }
             } catch {}
           }
+          # The browser helper: talk to it exactly like Chrome does.
+          $env:HG_HOST = (Resolve-Path dist\HyperGet\HyperGet-NativeHost.exe).Path
+          @'
+          import json, os, struct, subprocess
+          p = subprocess.Popen([os.environ["HG_HOST"]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+          msg = json.dumps({"id": 1, "method": "GET", "path": "/api/ping"}).encode()
+          p.stdin.write(struct.pack("<I", len(msg)) + msg); p.stdin.flush()
+          n = struct.unpack("<I", p.stdout.read(4))[0]; reply = json.loads(p.stdout.read(n))
+          p.stdin.close(); p.wait(timeout=20)
+          print("native host reply:", reply)
+          assert reply["ok"] and reply["data"]["app"] == "hyperget", reply
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { $ok = $false; Write-Host "native host check failed" }
           Stop-Process -Id $p.Id -Force
-          if (-not $ok) { throw "HyperGet.exe did not start correctly (UI, ffmpeg or yt-dlp missing)" }
-          Write-Host "HyperGet.exe started, served the UI, found ffmpeg and yt-dlp"
+          if (-not $ok) { throw "HyperGet.exe did not start correctly (UI, ffmpeg, yt-dlp or browser helper missing)" }
+          Write-Host "HyperGet.exe started, served the UI, found ffmpeg and yt-dlp; the browser helper answered"
+          # Registration writes the manifest + HKCU keys for each browser
+          Start-Process dist\HyperGet\HyperGet.exe -ArgumentList "--register" -Wait
+          Get-Item "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.dolese.hyperget" | Out-Host
 
       - name: Portable zip
         shell: pwsh

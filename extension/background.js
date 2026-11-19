@@ -1,11 +1,14 @@
 // HyperGet extension service worker.
 // - Detects media (HLS playlists, video/audio files) loaded by each tab.
-// - Talks to the HyperGet app on 127.0.0.1 (inspect qualities, add downloads).
+// - Talks to the HyperGet app through native messaging, like IDM: the browser
+//   starts HyperGet's helper (com.dolese.hyperget), which starts the app if needed.
 // - Optional: hands browser downloads over to HyperGet (like IDM).
 
 importScripts("config.js");
 
-const DEFAULTS = { port: 52817, intercept: true, minInterceptMB: 1 };
+const HOST = "com.dolese.hyperget";
+const NOT_INSTALLED = "HyperGet isn't installed on this computer. Get it at hyperget.dolese.tech";
+const DEFAULTS = { intercept: true, minInterceptMB: 1 };
 const media = new Map();          // tabId -> Map(url -> item)
 const reqHeaders = new Map();     // requestId -> {referer, cookie}
 
@@ -13,20 +16,59 @@ async function settings() {
   return { ...DEFAULTS, ...(await chrome.storage.local.get(Object.keys(DEFAULTS))) };
 }
 
-async function app(path, body) {
-  const { port } = await settings();
-  const res = await fetch(`http://127.0.0.1:${port}${path}`, {
-    method: body ? "POST" : "GET",
-    headers: { "X-HyperGet": "1", "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
+// ------------------------------------------------------------------ native messaging
+let nativePort = null;
+let seq = 0;
+const pending = new Map();        // id -> resolve
+
+function connect() {
+  if (nativePort) return nativePort;
+  nativePort = chrome.runtime.connectNative(HOST);
+  nativePort.onMessage.addListener((msg) => {
+    const done = pending.get(msg.id);
+    if (done) { pending.delete(msg.id); done(msg); }
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HyperGet error ${res.status}`);
-  return data;
+  nativePort.onDisconnect.addListener(() => {
+    const why = chrome.runtime.lastError?.message || "";
+    nativePort = null;
+    for (const [id, done] of pending) done({ id, ok: false, status: 0, disconnected: true, data: { error: why } });
+    pending.clear();
+  });
+  return nativePort;
 }
 
-async function appAlive() {
-  try { await app("/api/ping"); return true; } catch { return false; }
+function native(msg, timeoutMs = 130000) {
+  return new Promise((resolve) => {
+    const id = ++seq;
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      resolve({ id, ok: false, status: 0, data: { error: "HyperGet did not answer in time" } });
+    }, timeoutMs);
+    pending.set(id, (r) => { clearTimeout(timer); resolve(r); });
+    try {
+      connect().postMessage({ ...msg, id });
+    } catch (e) {
+      pending.delete(id);
+      clearTimeout(timer);
+      resolve({ id, ok: false, status: 0, disconnected: true, data: { error: e.message } });
+    }
+  });
+}
+
+async function app(path, body) {
+  const r = await native({ method: body ? "POST" : "GET", path, body });
+  if (!r.ok) {
+    const err = new Error(r.disconnected ? NOT_INSTALLED : (r.data && r.data.error) || `HyperGet error ${r.status}`);
+    err.notInstalled = !!r.disconnected;
+    throw err;
+  }
+  return r.data;
+}
+
+// installed: the helper answered. running: the app is open right now.
+async function appStatus() {
+  const r = await native({ method: "HELLO", launch: false }, 10000);
+  return { installed: !!r.ok, running: !!(r.ok && r.data && r.data.app_running) };
 }
 
 // ------------------------------------------------------------------ detection
@@ -125,19 +167,32 @@ async function videoOptions(tabId, pageUrl, src, pageTitle) {
   if (src && /^https?:/.test(src)) candidates.push({ url: src, headers: { Referer: pageUrl } });
   candidates.push({ url: pageUrl, headers: { Referer: pageUrl }, page: true });
   for (const m of tabMedia(tabId)) candidates.push(m);
+  // A page often loads both a master playlist (every quality) and one of its
+  // variants (a single quality). Check the detected streams and keep the one
+  // offering the most qualities instead of whichever loaded first.
   let lastErr = null;
+  let best = null;
+  let checkedHls = 0;
   for (const c of candidates) {
     if (tried.includes(c.url)) continue;
     tried.push(c.url);
+    if (best && best.info.kind === "hls" && c.kind !== "hls") break;
+    if (c.kind === "hls" && ++checkedHls > 6) break;
     try {
       const headers = await cleanHeaders(c.headers, c.url);
       const info = await app("/api/inspect", { url: c.url, headers });
       if (c.page && info.kind === "http") continue;   // page itself isn't a video
-      if (info.kind === "hls" && pageTitle) info.title = pageTitle;   // "master" -> real title
-      return { ok: true, info, source: { url: c.url, headers, page_url: pageUrl } };
+      const found = { ok: true, info, source: { url: c.url, headers, page_url: pageUrl } };
+      if (info.kind !== "hls") return found;          // a direct file or a site page: done
+      if (!best || info.options.length > best.info.options.length) best = found;
     } catch (e) {
+      if (e.notInstalled) return { ok: false, error: e.message };
       lastErr = e;
     }
+  }
+  if (best) {
+    if (pageTitle) best.info.title = pageTitle;       // "master" -> the page's real title
+    return best;
   }
   return { ok: false, error: lastErr ? lastErr.message : "No downloadable video found on this page yet. Start playing it, then try again." };
 }
@@ -154,7 +209,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   (async () => {
     const tabId = msg.tabId ?? sender.tab?.id;
     switch (msg.type) {
-      case "status": return { alive: await appAlive(), settings: await settings() };
+      case "status": return { ...(await appStatus()), settings: await settings() };
       case "media": return { items: tabMedia(tabId) };
       case "videoOptions": return videoOptions(tabId, msg.pageUrl, msg.src, msg.pageTitle);
       case "inspect": {
@@ -198,7 +253,7 @@ chrome.downloads.onCreated.addListener(async (item) => {
   if (item.byExtensionId === chrome.runtime.id) return;
   const size = item.totalBytes || item.fileSize || 0;
   if (size && size < s.minInterceptMB * 1024 * 1024) return;
-  if (!(await appAlive())) return;            // app not running: let the browser handle it
+  if (!(await appStatus()).installed) return;  // no HyperGet here: let the browser handle it
   const url = item.finalUrl || item.url;
   try {
     await chrome.downloads.cancel(item.id);

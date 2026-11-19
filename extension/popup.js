@@ -20,11 +20,10 @@ async function init() {
   [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const st = await send({ type: "status" });
   const s = st.settings;
-  $("#status").className = st.alive ? "on" : "off";
-  $("#status").innerHTML = `<span class="dot"></span>${st.alive ? "Connected" : "App not running"}`;
+  $("#status").className = st.running ? "on" : st.installed ? "idle" : "off";
+  $("#status").innerHTML = `<span class="dot"></span>${st.running ? "Connected" : st.installed ? "Starts when needed" : "Not installed"}`;
   $("#intercept").checked = s.intercept;
   $("#minMB").value = s.minInterceptMB;
-  $("#port").value = s.port;
 
   const { items } = await send({ type: "media", tabId: tab.id });
   if (items.length) {
@@ -51,9 +50,8 @@ async function init() {
   const save = () => send({ type: "saveSettings", settings: {
     intercept: $("#intercept").checked,
     minInterceptMB: Math.max(0, +$("#minMB").value || 0),
-    port: +$("#port").value || 52817,
   } });
-  ["intercept", "minMB", "port"].forEach((id) => $("#" + id).addEventListener("change", save));
+  ["intercept", "minMB"].forEach((id) => $("#" + id).addEventListener("change", save));
 }
 
 init();

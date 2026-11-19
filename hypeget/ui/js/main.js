@@ -131,7 +131,7 @@ const commands = {
     root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
     persistUi(); render();
   },
-  extension: () => D.extensionDialog(ui.state?.settings.api_port ?? 52817),
+  extension: () => D.extensionDialog(),
   about: () => api.state().then(() => D.aboutDialog("0.1.0")),
   sites: () => D.sitesDialog(!!ui.state?.features.sites),
   exit: () => window.pywebview?.api ? window.pywebview.api.close() : window.close(),

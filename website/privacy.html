@@ -63,8 +63,8 @@
     <ul>
       <li><b>Looks at the network responses of your open tabs</b> to spot video streams and media files, so it can list them and show a Download button. This list is kept in the browser's memory for that tab only and is cleared when the tab navigates or closes.</li>
       <li><b>Reads the referrer and cookies of a download</b> (and, when needed, your cookies for that download's site) so that downloads which need you to be signed in still work. This is read only for the item you choose to download, or for a browser download it hands to HyperGet.</li>
-      <li><b>Sends the download's address, the page address and title, and those referrer and cookie headers to the HyperGet app</b> at <code>127.0.0.1</code>, which is your own computer. Nothing is sent over the internet by the extension.</li>
-      <li><b>Saves three settings</b> in your browser's local extension storage: whether to take over browser downloads, the minimum file size for that, and the app's port number.</li>
+      <li><b>Sends the download's address, the page address and title, and those referrer and cookie headers to the HyperGet app</b> on your own computer, through the browser's native messaging channel to HyperGet's helper program. Nothing is sent over the internet by the extension.</li>
+      <li><b>Saves two settings</b> in your browser's local extension storage: whether to take over browser downloads, and the minimum file size for that.</li>
     </ul>
     <p>The extension does not keep or send a record of your browsing, does not read the content of web pages beyond finding video players on them, does not use remote code, and does not sell or share any data.</p>
 
@@ -73,7 +73,7 @@
       <li>It connects only to the websites you download from. When you download from a video site, the bundled yt-dlp component connects to that site to find the available qualities.</li>
       <li>Your download list and settings are stored on your computer in the <code>.hypeget</code> folder of your user profile. Downloaded files go to the folder you choose.</li>
       <li>The app has no telemetry and does not contact dolese Tech.</li>
-      <li>Its local connection for the extension listens only on your own computer and refuses requests from ordinary websites.</li>
+      <li>Its helper program, which the browser starts for the extension, accepts only the HyperGet extension. The app's local connection listens only on your own computer and refuses requests from websites and other extensions.</li>
     </ul>
 
     <h2>This website</h2>

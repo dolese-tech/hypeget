@@ -51,4 +51,10 @@ Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\{#EdgeExtId}"; ValueType
 #endif
 
 [Run]
+; Register the native messaging helper with Chrome, Edge and Brave (per user).
+; HyperGet also re-registers itself every time it starts.
+Filename: "{app}\HyperGet.exe"; Parameters: "--register"; Flags: runhidden waituntilterminated
 Filename: "{app}\HyperGet.exe"; Description: "Launch HyperGet now"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{app}\HyperGet.exe"; Parameters: "--unregister"; Flags: runhidden waituntilterminated; RunOnceId: "UnregisterBrowsers"

@@ -6,7 +6,9 @@ Makes two zips from extension/:
   hyperget-extension-<version>-store.zip  for the Chrome Web Store and Edge Add-ons
                                           (in-page video download off on YouTube)
   hyperget-extension-<version>-full.zip   the complete extension, shipped inside
-                                          the HyperGet download for "Load unpacked"
+                                          the HyperGet download for "Load unpacked";
+                                          keeps the "key", so its ID is the pinned one
+                                          the native messaging helper trusts
 """
 from __future__ import annotations
 
@@ -72,6 +74,11 @@ def build(store: bool, version: str) -> str:
                     sys.exit("config.js: HYPERGET_BUILD.store not found")
                 text = re.sub(r'version:\s*"[^"]*"', f'version: "{version}"', text, count=1)
                 z.writestr(rel, text)
+            elif rel == "manifest.json" and store:
+                # The stores assign the ID themselves and refuse a "key".
+                m = json.load(open(full, encoding="utf-8"))
+                m.pop("key", None)
+                z.writestr(rel, json.dumps(m, indent=2) + "\n")
             else:
                 z.write(full, rel)
     return path

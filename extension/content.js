@@ -114,8 +114,7 @@
     }
     if (!menuOpen) return;
     if (!res?.ok) {
-      const offline = /Failed to fetch|NetworkError/i.test(res?.error || "");
-      menu.innerHTML = `<div class="note err">${offline ? "HyperGet isn't running. Start the app and try again." : esc(res?.error)}</div>`;
+      menu.innerHTML = `<div class="note err">${esc(res?.error || "Something went wrong")}</div>`;
       return;
     }
     const { info, source } = res;

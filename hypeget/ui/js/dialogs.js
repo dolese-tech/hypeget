@@ -244,8 +244,6 @@ export function optionsDialog(state) {
       </div>
       <div class="row2">
         <div class="field"><label>Speed limit (KB/s, 0 = unlimited)</label><input type="number" id="o-speed" min="0" value="${Math.round(s.speed_limit / 1024)}"></div>
-        <div class="field"><label>Browser extension port</label><input type="number" id="o-port" min="1024" max="65535" value="${s.api_port}">
-          <div class="hint">Takes effect after restarting HyperGet.</div></div>
       </div>
       <div class="msg info">
         Video sites (YouTube etc.): <b>${f.sites ? "enabled" : "not installed"}</b>${f.sites ? "" : " — run <code>pip install yt-dlp</code>"}<br>
@@ -258,7 +256,6 @@ export function optionsDialog(state) {
         connections: +ov.querySelector("#o-conn").value,
         max_active: +ov.querySelector("#o-max").value,
         speed_limit: Math.max(0, +ov.querySelector("#o-speed").value) * 1024,
-        api_port: +ov.querySelector("#o-port").value,
       });
       toast("Options saved");
     } }],
@@ -315,15 +312,15 @@ export function aboutDialog(version) {
   });
 }
 
-export function extensionDialog(port) {
+export function extensionDialog() {
   modal({
     title: "Browser extension",
     body: `<ol class="steps">
         <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>) and turn on <b>Developer mode</b>.</li>
         <li>Click <b>Load unpacked</b> and choose the <code>extension</code> folder from HyperGet.</li>
-        <li>Keep HyperGet running. On pages with video a <b>Download</b> button appears over the player; pick a quality and it's sent here.</li>
+        <li>On pages with video a <b>Download</b> button appears over the player; pick a quality and it's sent here. If HyperGet is closed, the browser starts it.</li>
       </ol>
-      <div class="msg info">The extension talks to HyperGet on <code>127.0.0.1:${port}</code>. Only extensions can use this port; normal websites are blocked.</div>`,
+      <div class="msg info">The browser talks to HyperGet through its helper, the same way IDM connects. HyperGet registers it with Chrome, Edge and Brave each time it starts; nothing to set up.</div>`,
     buttons: [{ label: "Close", cls: "btn-primary", primary: true }],
   });
 }

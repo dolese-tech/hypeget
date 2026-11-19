@@ -62,11 +62,18 @@ Settings and the download list live in `~/.hypeget` (override with `HYPEGET_HOME
 
 1. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
 2. **Load unpacked**, then choose the `extension/` folder.
-3. Keep HyperGet running. Hover a video and click **Download this video**, then pick a quality.
+3. Hover a video and click **Download this video**, then pick a quality.
 
-The extension talks to the app at `http://127.0.0.1:52817`. That API only listens on
-loopback, checks the `Host` header, requires an `X-HyperGet` header and only accepts
-cross-origin calls from browser extensions, so ordinary websites cannot drive it.
+The extension reaches the app through **native messaging**, like IDM: the browser starts
+HyperGet's helper (`com.dolese.hyperget`, `hypeget/native_host.py`), which forwards
+requests to the running app and starts HyperGet if it's closed. HyperGet registers the
+helper for Chrome, Edge, Brave and Chromium every time it starts (`hypeget/native_reg.py`,
+per user, no admin rights). Only the extension with the pinned ID
+`oeclpagllkokmfmdpapcaeljjcbndgao` (and the store IDs, once assigned) may use it.
+
+The app's own local API listens on loopback only, checks the `Host` header, requires an
+`X-HyperGet` header and refuses every cross-origin request, so websites and other
+extensions cannot drive it.
 
 > Only download content you have the right to save. Many video sites' terms restrict
 > downloading. DRM-protected services (Netflix, Spotify, …) are not supported.

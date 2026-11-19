@@ -21,7 +21,8 @@
     "storage",
     "contextMenus",
     "downloads",
-    "cookies"
+    "cookies",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -41,5 +42,6 @@
     }
   ],
   "short_name": "HyperGet",
-  "homepage_url": "https://hyperget.dolese.tech"
+  "homepage_url": "https://hyperget.dolese.tech",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuBgM+mMhtS4rCIznnmam+tV+X3gEBiatr3cAi+FpTC9JU6qrCPfd+KSA6cBZTkNgJ1d1jKwwcE2fERPV9HgayIvgKJb9/PKoIsI7/wmp0GLLv16GHPh1wK1FO8iY7UOA45OZUQIWXOts5MoFKhNaUWx8YKllkQKig6KaJCsa1aq65P2nbUl9MfbFNOInSu9p98vvHEdfQ9VIcOHVs8HwUZ3I9GeS0UyUPOz+tD28qw1dtxFSJlIPqed2S8VnIZVpiT1iuWij/yXL8KeXJTFs+qYWCxxGulZs5UfxTA5ouzrnxo7afgll3NUQdDFzxfz1pxx5wurxuf9D6C45bKxA3wIDAQAB"
 }

@@ -38,10 +38,10 @@ WHAT IT DOES
 • Signed-in downloads keep working: the referrer and cookies for the file you download are passed to the app.
 
 REQUIREMENTS
-The HyperGet app for Windows 10 or 11 must be installed and running. Get it at https://hyperget.dolese.tech/download. If the app isn't running, the browser downloads files as usual.
+The HyperGet app for Windows 10 or 11 must be installed. Get it at https://hyperget.dolese.tech/download. If HyperGet is closed, the extension starts it; if it isn't installed, the browser downloads files as usual.
 
 PRIVACY
-The extension talks only to the HyperGet app on your own computer (127.0.0.1). It sends nothing to dolese Tech or anyone else, has no analytics and needs no account. Details: https://hyperget.dolese.tech/privacy
+The extension talks only to the HyperGet app on your own computer, through the browser's native messaging. It sends nothing to dolese Tech or anyone else, has no analytics and needs no account. Details: https://hyperget.dolese.tech/privacy
 
 Some sites don't allow downloading their videos from the browser; on those the Download button isn't shown. DRM-protected streams (for example Netflix or Spotify) are not supported. Download only content you have the right to save.
 ---
@@ -72,7 +72,8 @@ Some sites don't allow downloading their videos from the browser; on those the D
 | `downloads` | Optional take-over of browser downloads: when the user enables it and the HyperGet app is running, a new browser download is cancelled and handed to HyperGet instead. |
 | `cookies` | Reads the cookies for the single file the user chooses to download, so that downloads which require the user to be signed in work in the HyperGet app. |
 | `contextMenus` | Adds "Download with HyperGet" to the right-click menu for links, images, audio and video. |
-| `storage` | Saves the user's three settings: take over downloads on/off, minimum file size, and the app's port. |
+| `storage` | Saves the user's two settings: take over downloads on/off and the minimum file size. |
+| `nativeMessaging` | Connects to the HyperGet desktop app installed on the user's computer (native host `com.dolese.hyperget`), which performs the downloads. This is the extension's only way to reach the app. |
 | Host permission `<all_urls>` | Needed on every site because the user can download from any site: to detect media in any tab, show the Download button on any video, and read cookies for the chosen file's site. |
 | Content script on all sites | Shows the "Download this video" button and quality menu over video players. It does not read or change page content otherwise. |
 
@@ -89,7 +90,7 @@ Then tick all three certifications:
 - I do not use or transfer user data for purposes that are unrelated to my item's single purpose.
 - I do not use or transfer user data to determine creditworthiness or for lending purposes.
 
-> The data never leaves the computer: it goes only to the HyperGet app over 127.0.0.1. Declaring it anyway is the safe choice in review.
+> The data never leaves the computer: it goes only to the HyperGet app through native messaging. Declaring it anyway is the safe choice in review.
 
 ---
 
@@ -103,6 +104,6 @@ Then tick all three certifications:
 > 1. Install and start HyperGet.
 > 2. Open any page with an HTML5 video, hover the video and click "Download this video", then pick a quality: the download appears in HyperGet.
 > 3. Click the toolbar button to see media detected on the tab.
-> Without the app running, the popup shows "App not running" and the browser keeps downloading files normally. The extension sends data only to the app on 127.0.0.1; it makes no other network requests.
+> If HyperGet is closed, the extension starts it. Without HyperGet installed, the popup shows "Not installed" and the browser keeps downloading files normally. The extension communicates only with the HyperGet app through native messaging (host `com.dolese.hyperget`); it makes no network requests of its own.
 
 Use the same notes in the Chrome Web Store if a reviewer asks for test instructions.

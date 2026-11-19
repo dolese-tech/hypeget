@@ -33,10 +33,13 @@ def test_requires_header(api):
     assert code == 400
 
 
-def test_blocks_websites_allows_extensions(api):
+def test_blocks_other_origins(api):
+    """Only the app's own window and local programs (the native helper) may call."""
     assert call(api, "GET", "/api/state", headers={"Origin": "https://evil.example"})[0] == 403
-    assert call(api, "GET", "/api/state", headers={"Origin": "chrome-extension://abcdef"})[0] == 200
+    assert call(api, "GET", "/api/state", headers={"Origin": "chrome-extension://abcdef"})[0] == 403
     assert call(api, "GET", "/api/state", headers={"Host": f"attacker.test:{api.port}"})[0] == 403
+    assert call(api, "GET", "/api/state", headers={"Origin": f"http://127.0.0.1:{api.port}"})[0] == 200
+    assert call(api, "GET", "/api/state")[0] == 200
 
 
 def test_static_ui(api):

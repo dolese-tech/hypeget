@@ -1,9 +1,10 @@
 """Local HTTP API on 127.0.0.1, used by the app window and the browser extension.
 
-Security: binds to loopback only, checks the Host header (DNS-rebinding),
-and only accepts cross-origin calls from browser-extension origins. Every
-API call must carry ``X-HyperGet: 1``, which forces a CORS preflight, so an
-ordinary web page cannot make the app download things.
+Security: binds to loopback only, checks the Host header (DNS-rebinding) and
+refuses every cross-origin request: only the app's own window (same origin)
+and local programs without an Origin header, such as the native messaging
+helper the browser extension talks to, are accepted. Every API call must
+carry ``X-HyperGet: 1`` as well.
 """
 from __future__ import annotations
 
@@ -22,7 +23,6 @@ from .engine.manager import Manager
 from .engine.segments import DownloadError
 
 UI_DIR = os.path.join(os.path.dirname(__file__), "ui")
-EXT_ORIGINS = ("chrome-extension://", "moz-extension://", "extension://", "safari-web-extension://")
 
 
 def open_path(path: str) -> None:
@@ -50,16 +50,7 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         if not origin:
             return True
-        return origin.startswith(EXT_ORIGINS) or origin in (
-            f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}")
-
-    def _cors(self):
-        origin = self.headers.get("Origin")
-        if origin and origin.startswith(EXT_ORIGINS):
-            self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-HyperGet")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-            self.send_header("Vary", "Origin")
+        return origin in (f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}")
 
     def _json(self, code: int, payload):
         body = json.dumps(payload).encode()
@@ -67,7 +58,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
-        self._cors()
         self.end_headers()
         self.wfile.write(body)
 
@@ -91,12 +81,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------------------------------------------------------- verbs
     def do_OPTIONS(self):
-        if not self._origin_ok():
-            self.send_response(403)
-            self.end_headers()
-            return
-        self.send_response(204)
-        self._cors()
+        # No cross-origin access is offered, so every preflight is refused.
+        self.send_response(403)
         self.end_headers()
 
     def do_GET(self):
