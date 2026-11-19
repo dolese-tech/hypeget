@@ -1,5 +1,22 @@
-// Mobile menu + "Copy download link" for phone visitors.
+// Mobile menu, "Copy download link" for phone visitors, and store links.
 (() => {
+  // Paste the store IDs here once the Chrome Web Store and Edge Add-ons approve the
+  // extension (see docs/STORE_UPLOAD.md). Until then the buttons lead to manual setup.
+  const STORE = { chrome: "", edge: "" };
+  const STORE_URL = {
+    chrome: (id) => `https://chromewebstore.google.com/detail/${id}`,
+    edge: (id) => `https://microsoftedge.microsoft.com/addons/detail/${id}`,
+  };
+  if (STORE.chrome || STORE.edge) {
+    document.querySelectorAll("[data-store]").forEach((a) => {
+      const id = STORE[a.dataset.store];
+      if (id) a.href = STORE_URL[a.dataset.store](id);
+      else a.hidden = true;
+    });
+    document.querySelectorAll("[data-store-only]").forEach((el) => { el.hidden = false; });
+    document.querySelectorAll("[data-manual-only]").forEach((el) => { el.hidden = true; });
+  }
+
   const nav = document.getElementById("nav");
   const btn = document.getElementById("menuBtn");
   if (nav && btn) {

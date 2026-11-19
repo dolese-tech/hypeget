@@ -65,7 +65,11 @@
       <div class="dl-step"><span class="num">1</span><h3>Open the installer</h3><p>Click the file in your browser's downloads bar or your Downloads folder.</p></div>
       <div class="dl-step"><span class="num">2</span><h3>If Windows warns you</h3><p>On "Windows protected your PC", choose <b>More info</b>, then <b>Run anyway</b>.</p></div>
       <div class="dl-step" id="extension"><span class="num">3</span><h3>Add the extension</h3><p>So videos get a Download button and browser downloads go to HyperGet.</p>
-        <ol>
+        <div class="actions" data-store-only hidden>
+          <a class="btn btn-navy btn-sm" data-store="chrome" href="#">Add to Chrome</a>
+          <a class="btn btn-ghost btn-sm" data-store="edge" href="#">Add to Edge</a>
+        </div>
+        <ol data-manual-only>
           <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>) and turn on Developer mode.</li>
           <li>Click Load unpacked and choose the <code>extension</code> folder inside HyperGet.</li>
         </ol>
@@ -85,6 +89,7 @@
     <nav class="links" aria-label="Footer">
       <a href="/">Home</a>
       <a href="/#faq">Questions</a>
+      <a href="/privacy">Privacy</a>
       <a href="https://github.com/dolese/hypeget/releases">Release notes</a>
     </nav>
   </div>

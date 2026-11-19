@@ -1,6 +1,7 @@
 // Floating "Download this video" button over <video> players, with a quality menu.
 (() => {
   if (window.__hypergetInjected) return;
+  if (typeof hypergetRestricted === "function" && hypergetRestricted(location.href)) return;
   window.__hypergetInjected = true;
 
   const host = document.createElement("div");

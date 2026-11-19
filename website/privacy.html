@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy policy · HyperGet</title>
+<meta name="description" content="How HyperGet, its browser extension and this website handle your data.">
+<meta name="theme-color" content="#16235B">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icon-256.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .legal { max-width: 760px; margin: 0 auto; padding: 48px 0 80px; }
+  .legal h1 { font-size: clamp(38px, 2.4vw + 20px, 52px); margin: 10px 0 8px; }
+  .legal .updated { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+  .legal h2 { font-family: var(--sans); font-weight: 700; font-size: 20px; color: var(--navy); margin: 36px 0 10px; letter-spacing: 0; }
+  .legal p, .legal li { color: var(--text-2); font-size: 16px; line-height: 1.65; }
+  .legal p + p, .legal ul + p { margin-top: 12px; }
+  .legal ul { padding-left: 20px; margin: 10px 0 0; display: grid; gap: 8px; }
+  .legal .summary { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; }
+  .legal .summary p { color: var(--navy); font-size: 17px; }
+  .legal code { font: 500 14px var(--mono); background: var(--card); padding: 1px 6px; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="nav-pill">
+    <a class="logo" href="/" aria-label="HyperGet home"><img class="logo-mark" src="/assets/favicon.svg" width="32" height="32" alt="">HyperGet</a>
+    <nav class="nav-links" id="navLinks" aria-label="Sections">
+      <a href="/#features">Features</a>
+      <a href="/#video">Video</a>
+      <a href="/#extension">Extension</a>
+      <a href="/#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-navy btn-sm" href="/download">Download</a>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <article class="legal">
+    <span class="eyebrow">Privacy</span>
+    <h1>Privacy policy</h1>
+    <p class="updated">HyperGet, the HyperGet Integration browser extension and hyperget.dolese.tech · Last updated 19 November 2026</p>
+
+    <div class="summary">
+      <p>HyperGet works on your own computer. The app and the extension do not send anything about you or your browsing to dolese Tech or to anyone else. There is no account, no analytics and no advertising.</p>
+    </div>
+
+    <h2>Who we are</h2>
+    <p>HyperGet is made by dolese Tech. Questions about this policy: <a href="mailto:support@dolese.tech">support@dolese.tech</a>.</p>
+
+    <h2>The browser extension</h2>
+    <p>The extension's only job is to hand downloads and videos to the HyperGet app on the same computer. To do that it:</p>
+    <ul>
+      <li><b>Looks at the network responses of your open tabs</b> to spot video streams and media files, so it can list them and show a Download button. This list is kept in the browser's memory for that tab only and is cleared when the tab navigates or closes.</li>
+      <li><b>Reads the referrer and cookies of a download</b> (and, when needed, your cookies for that download's site) so that downloads which need you to be signed in still work. This is read only for the item you choose to download, or for a browser download it hands to HyperGet.</li>
+      <li><b>Sends the download's address, the page address and title, and those referrer and cookie headers to the HyperGet app</b> at <code>127.0.0.1</code>, which is your own computer. Nothing is sent over the internet by the extension.</li>
+      <li><b>Saves three settings</b> in your browser's local extension storage: whether to take over browser downloads, the minimum file size for that, and the app's port number.</li>
+    </ul>
+    <p>The extension does not keep or send a record of your browsing, does not read the content of web pages beyond finding video players on them, does not use remote code, and does not sell or share any data.</p>
+
+    <h2>The HyperGet app</h2>
+    <ul>
+      <li>It connects only to the websites you download from. When you download from a video site, the bundled yt-dlp component connects to that site to find the available qualities.</li>
+      <li>Your download list and settings are stored on your computer in the <code>.hypeget</code> folder of your user profile. Downloaded files go to the folder you choose.</li>
+      <li>The app has no telemetry and does not contact dolese Tech.</li>
+      <li>Its local connection for the extension listens only on your own computer and refuses requests from ordinary websites.</li>
+    </ul>
+
+    <h2>This website</h2>
+    <ul>
+      <li>The site is hosted by Vercel, which keeps standard server logs (such as IP address and pages requested) to run and protect the service.</li>
+      <li>Fonts are loaded from Google Fonts, so your browser connects to Google when you open a page.</li>
+      <li>The site sets no cookies and uses no analytics or advertising.</li>
+      <li>Download buttons take you to GitHub, where the files are hosted; GitHub's own privacy policy applies there.</li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>HyperGet does not knowingly collect data from anyone, including children.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version will be posted on this page with a new date.</p>
+  </article>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>© 2026 HyperGet · Powered by <b>dolese Tech</b></span>
+    <nav class="links" aria-label="Footer">
+      <a href="/download">Download</a>
+      <a href="/privacy">Privacy</a>
+      <a href="https://github.com/dolese/hypeget/releases">Release notes</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/site.js" defer></script>
+</body>
+</html>

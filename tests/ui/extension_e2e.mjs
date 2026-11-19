@@ -5,7 +5,7 @@ import os from "os"; import fs from "fs"; import path from "path";
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 const [pageUrl, port, shot] = process.argv.slice(2);
-const ext = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../extension");
+const ext = process.env.EXT_DIR || path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../extension");
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hg-ext-"));
 const ctx = await chromium.launchPersistentContext(dir, {
   channel: "chromium", headless: true, viewport: { width: 1000, height: 640 },

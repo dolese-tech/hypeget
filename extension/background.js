@@ -3,6 +3,8 @@
 // - Talks to the HyperGet app on 127.0.0.1 (inspect qualities, add downloads).
 // - Optional: hands browser downloads over to HyperGet (like IDM).
 
+importScripts("config.js");
+
 const DEFAULTS = { port: 52817, intercept: true, minInterceptMB: 1 };
 const media = new Map();          // tabId -> Map(url -> item)
 const reqHeaders = new Map();     // requestId -> {referer, cookie}
@@ -115,6 +117,9 @@ async function cleanHeaders(h, url) {
 // Pick what the page's video really is: a supported site page (YouTube...) or the
 // best media the tab loaded (HLS master first, then the biggest file).
 async function videoOptions(tabId, pageUrl, src, pageTitle) {
+  if (hypergetRestricted(pageUrl)) {
+    return { ok: false, error: "Video download isn't available on this site from the browser. Copy the page link and paste it into HyperGet (Add URL)." };
+  }
   const tried = [];
   const candidates = [];
   if (src && /^https?:/.test(src)) candidates.push({ url: src, headers: { Referer: pageUrl } });

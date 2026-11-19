@@ -2,16 +2,44 @@
   "manifest_version": 3,
   "name": "HyperGet Integration",
   "version": "0.1.0",
-  "description": "Send downloads and videos to HyperGet Downloader. Shows a Download button on videos with quality selection.",
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "action": { "default_popup": "popup.html", "default_title": "HyperGet" },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["webRequest", "storage", "contextMenus", "downloads", "cookies", "tabs"],
-  "host_permissions": ["<all_urls>"],
-  "content_scripts": [{
-    "matches": ["http://*/*", "https://*/*"],
-    "js": ["content.js"],
-    "run_at": "document_idle",
-    "all_frames": true
-  }]
+  "description": "Send downloads and videos to the HyperGet download manager, with a Download button on videos and a quality picker.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HyperGet"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "webRequest",
+    "storage",
+    "contextMenus",
+    "downloads",
+    "cookies"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "config.js",
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "short_name": "HyperGet",
+  "homepage_url": "https://hyperget.dolese.tech"
 }

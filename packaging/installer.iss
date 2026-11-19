@@ -37,5 +37,18 @@ Name: "{group}\Uninstall HyperGet"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\HyperGet Downloader"; Filename: "{app}\HyperGet.exe"; Tasks: desktopicon
 Name: "{userstartup}\HyperGet Downloader"; Filename: "{app}\HyperGet.exe"; Tasks: startup
 
+;---------------------------------------------------------------------------
+; Browser extension, the IDM way: tell Chrome and Edge where to get the store
+; version. After installing, the browser shows "New extension added" and the
+; user clicks Enable. Defined only when the build passes the store IDs:
+;   ISCC /DChromeExtId=<id> /DEdgeExtId=<id> installer.iss
+[Registry]
+#ifdef ChromeExtId
+Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\{#ChromeExtId}"; ValueType: string; ValueName: "update_url"; ValueData: "https://clients2.google.com/service/update2/crx"; Flags: uninsdeletekey
+#endif
+#ifdef EdgeExtId
+Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\{#EdgeExtId}"; ValueType: string; ValueName: "update_url"; ValueData: "https://edge.microsoft.com/extensionwebstorebase/v1/crx"; Flags: uninsdeletekey
+#endif
+
 [Run]
 Filename: "{app}\HyperGet.exe"; Description: "Launch HyperGet now"; Flags: nowait postinstall skipifsilent
