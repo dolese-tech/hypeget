@@ -1,7 +1,7 @@
 name: Windows build
 
 # Builds HyperGet.exe (PyInstaller), a portable zip and an installer (Inno Setup).
-# Push a tag like v0.1.0 to also publish them as a GitHub Release.
+# Push a tag like v0.1.0, or run it by hand with a release tag, to also publish a GitHub Release.
 # Runs only when it matters: a version tag (publishes a release), app code
 # changing on main, or by hand (Actions > Windows build > Run workflow).
 on:
@@ -16,6 +16,11 @@ on:
       - "pyproject.toml"
       - ".github/workflows/windows-build.yml"
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a GitHub Release with this tag, e.g. v0.1.0 (must match hypeget/__init__.py). Leave empty to only build."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -141,10 +146,19 @@ jobs:
             dist/HyperGet-portable-*.zip
             dist/extension/*.zip
 
+      - name: Check the release tag matches the version
+        if: inputs.release != ''
+        shell: bash
+        run: |
+          [[ "${{ inputs.release }}" == "v${{ steps.ver.outputs.version }}" ]] || { echo "Tag ${{ inputs.release }} != v${{ steps.ver.outputs.version }}"; exit 1; }
+
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: HyperGet ${{ inputs.release || github.ref_name }}
           files: |
             dist/HyperGet-Setup-*.exe
             dist/HyperGet-portable-*.zip
